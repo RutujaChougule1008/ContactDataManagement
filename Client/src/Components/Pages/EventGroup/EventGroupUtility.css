@@ -1,0 +1,9 @@
+/* EventGroupUtility.css */
+.tableContainer {
+    max-height: 460px; /* Adjust based on your needs */
+    overflow-y: auto; /* Enables vertical scrolling */
+}
+
+.tableRow {
+    height: 35px; /* Decreases the height of each row */
+}
