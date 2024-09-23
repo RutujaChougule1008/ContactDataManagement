@@ -19,6 +19,37 @@ def get_event_groups():
     ]
     return jsonify(event_group_data)
 
+@app.route(API_URL+"/get-event_groups_by_count", methods=["GET"])
+def get_event_groups_by_count():
+    try:
+
+        query = ('''SELECT dbo.EventGroup.eventCode, dbo.EventGroup.eventName, COUNT(*) AS count
+FROM dbo.EventGroup INNER JOIN
+ dbo.Contact_Data_Bank_Detail ON dbo.EventGroup.eventCode = dbo.Contact_Data_Bank_Detail.eventCode
+GROUP BY dbo.EventGroup.eventCode, dbo.EventGroup.eventName order by dbo.EventGroup.eventName
+                                 '''
+            )
+        additional_data = db.session.execute(text(query))
+
+        # Extracting category name from additional_data
+        additional_data_rows = additional_data.fetchall()
+        
+
+        # Convert additional_data_rows to a list of dictionaries
+        all_data = [dict(row._mapping) for row in additional_data_rows]
+
+
+        # Prepare response data 
+        response = {
+            "event_group_data": all_data
+        }
+        # If record found, return it
+        return jsonify(response), 200
+
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
 @app.route(API_URL + "/create-eventgroup", methods=["POST"])
 def create_eventgroup():
     try:

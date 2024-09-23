@@ -8,6 +8,7 @@ const SearchPage = () => {
     const [selectedGroups, setSelectedGroups] = useState([]);
     const [selectedEvents, setSelectedEvents] = useState([]);
     const [selectedGroupDetails, setSelectedGroupDetails] = useState(null); 
+    const [selectedGroupNames, setSelectedGroupNames] = useState([]);
     const navigate = useNavigate(); 
 
     // API call to fetch details for a specific group when "Show" is clicked
@@ -30,17 +31,20 @@ const SearchPage = () => {
 
     const handleCheckboxChange = (e, group) => {
         const { checked } = e.target;
+        const { eventCode, eventName } = group;
         if (checked) {
             setSelectedGroups((prev) => [...prev, group.eventCode]);
+            setSelectedGroupNames((prevNames) => [...prevNames, eventName]);
         } else {
             setSelectedGroups((prev) => prev.filter((code) => code !== group.eventCode));
+            setSelectedGroupNames((prevNames) => prevNames.filter((name) => name !== eventName));
         }
     };
 
     const handleShowClick = () => {
         // Redirect to the ContactData component with eventCodes as state
         navigate('/contact-data-event-code', {
-            state: { eventCodes: selectedGroups } 
+            state: { eventCodes: selectedGroups, eventNames: selectedGroupNames} 
         });
     };
 

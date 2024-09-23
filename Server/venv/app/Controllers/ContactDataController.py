@@ -43,9 +43,12 @@ def delete_acgroups_by_eventCode(contact_Id):
 def get_contactData():
     try:
 
-        query = ('''SELECT contact_Id, org_name, org_holder_name, designation, office_address, city, state, country, mobile_no, email, website
-FROM     Contact_Data_Bank_Head
-ORDER BY org_name
+        query = ('''SELECT  h.org_name, h.designation, h.org_holder_name, h.city, h.state, h.country, h.mobile_no, h.email, h.website, h.mobile_no2, h.email2 , h.contact_Id, ISNULL(eventCodeCountTable.eventCodeCount, 0) AS eventCodeCount
+FROM     dbo.Contact_Data_Bank_Head AS h LEFT OUTER JOIN
+                      (SELECT contact_Id, COUNT(eventCode) AS eventCodeCount
+                       FROM      dbo.Contact_Data_Bank_Detail
+                       GROUP BY contact_Id) AS eventCodeCountTable ON h.contact_Id = eventCodeCountTable.contact_Id
+ORDER BY h.org_name
                                  '''
             )
         additional_data = db.session.execute(text(query))

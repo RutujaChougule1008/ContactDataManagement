@@ -246,9 +246,9 @@ const EventGroupMaster = () => {
             />
             <div className="form-container">
                 <form>
-                    <h2>Event Group Master</h2>
+                    <h2>Category Master</h2>
                     <div className="form-group">
-                        <label htmlFor="eventName">Event Name:</label>
+                        <label htmlFor="eventName">Category</label>
                         <input type="text" id="eventName" name="eventName" value={formData.eventName} onChange={handleChange} disabled={!isEditing && addOneButtonEnabled} />
                     </div>
                 </form>

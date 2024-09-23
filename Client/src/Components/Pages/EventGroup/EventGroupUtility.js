@@ -30,9 +30,9 @@ function EventGroupUtility() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get(`${API_URL}/event_groups`);
-                setEventGroups(response.data);
-                setFilteredData(response.data); 
+                const response = await axios.get(`${API_URL}/get-event_groups_by_count`);
+                setEventGroups(response.data.event_group_data);
+                setFilteredData(response.data.event_group_data); 
             } catch (error) {
                 console.error("Error fetching event groups:", error);
             }
@@ -76,7 +76,7 @@ function EventGroupUtility() {
     };
 
     return (
-        <div className="container">
+        <div className="container" style={{ height: "1000px" }}>
             <Grid container spacing={3}>
                 <Grid item xs={12}>
                     <Button variant="contained" onClick={handleAddNew}>
@@ -95,8 +95,10 @@ function EventGroupUtility() {
                             <Table>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell>Event Code</TableCell>
-                                        <TableCell>Event Name</TableCell>
+                                        <TableCell>Code</TableCell>
+                                        <TableCell>Category</TableCell>
+                                        <TableCell>Count</TableCell>
+
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -109,6 +111,7 @@ function EventGroupUtility() {
                                         >
                                             <TableCell>{group.eventCode}</TableCell>
                                             <TableCell>{group.eventName}</TableCell>
+                                            <TableCell>{group.count}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>

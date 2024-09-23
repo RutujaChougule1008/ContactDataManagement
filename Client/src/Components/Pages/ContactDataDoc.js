@@ -58,7 +58,9 @@ const ContactData = () => {
   email: '',
   anniversary: '',
   website: '',
-  DOB: ''
+  DOB: '',
+  mobile_no2: '',
+  email2: ''
   };
 
   const orgNameRef = useRef(null);
@@ -683,7 +685,7 @@ const ContactData = () => {
             />
           </div>
           <div className="contact-data-form-group">
-            <label htmlFor="mobile_no">Mobile No:</label>
+            <label htmlFor="mobile_no">Primary Mobile No:</label>
             <input
               type="text"
               id="mobile_no"
@@ -694,12 +696,34 @@ const ContactData = () => {
             />
           </div>
           <div className="contact-data-form-group">
-            <label htmlFor="email">Email Id:</label>
+            <label htmlFor="mobile_no2">Secondary Mobile No:</label>
+            <input
+              type="text"
+              id="mobile_no2"
+              name="mobile_no2"
+              value={formData.mobile_no2}
+              onChange={handleChange}
+              disabled={!isEditing && addOneButtonEnabled}
+            />
+          </div>
+          <div className="contact-data-form-group">
+            <label htmlFor="email">Primary Mail Id</label>
             <input
               type="text"
               id="email"
               name="email"
               value={formData.email}
+              onChange={handleChange}
+              disabled={!isEditing && addOneButtonEnabled}
+            />
+          </div>
+          <div className="contact-data-form-group">
+            <label htmlFor="email2">Secondary Email Id:</label>
+            <input
+              type="text"
+              id="email2"
+              name="email2"
+              value={formData.email2}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
             />

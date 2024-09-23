@@ -21,6 +21,9 @@ class ContactDataBankHead(db.Model):
     anniversary = Column(Date, nullable=True)
     website = Column(String(255), nullable=True)
     DOB = Column(Date, nullable=True)
+    mobile_no2 = Column(String(255), nullable=True)
+    email2 = Column(String(255), nullable=True)
+
 
 class ContactDataBankDetail(db.Model):
     __tablename__ = 'Contact_Data_Bank_Detail'

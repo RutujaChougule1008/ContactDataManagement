@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
 import LoginPage from './Components/Pages/Login/Login';
 import Sidebar from './Components/SideBar/SideBar';
 import Home from './Components/Pages/Home';
@@ -31,6 +32,24 @@ function App() {
   const location = useLocation();
 
   const showSidebar = location.pathname !== '/';
+
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      const confirmationMessage = 'Are you sure you want to leave? Your changes may not be saved.';
+      event.preventDefault();
+      event.returnValue = confirmationMessage;
+      return confirmationMessage;
+    };
+
+    // Attach event listener
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Cleanup listener on component unmount
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
 
   return (
     <>

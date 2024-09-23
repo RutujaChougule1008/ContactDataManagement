@@ -27,7 +27,7 @@ const SearchPageUtility = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const location = useLocation();
 
-  const { eventCodes } = location.state;
+  const { eventCodes, eventNames } = location.state;
 
   // Function to fetch contact data from the API
   const fetchContactData = async () => {
@@ -37,7 +37,8 @@ const SearchPageUtility = () => {
     try {
       const response = await axios.get(`${API_URL}/contact_data`, {
         params: {
-          'eventCode': eventCodes
+          'eventCode': eventCodes,
+          
         },
         paramsSerializer: (params) => new URLSearchParams(params).toString(),
       });
@@ -91,14 +92,14 @@ const SearchPageUtility = () => {
   return (
     <div style={{ padding: '20px' }}>
       <Typography variant="h4" gutterBottom textAlign="center">
-        Contact Data Search
+      {eventNames && eventNames.length > 0 ? `Report for: ${eventNames.join(', ')}` : 'Contact Data Search'}
       </Typography>
 
       {loading && <Typography variant="h6" gutterBottom textAlign="center">Loading...</Typography>}
       {error && <Typography variant="h6" gutterBottom textAlign="center" style={{ color: 'red' }}>{error}</Typography>}
 
       {/* Search Bar */}
-      <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ marginTop: 2 }}>
+      <Grid container spacing={2} alignItems="center" justifyContent="flex-end" sx={{ marginTop: 2 }}>
         <Grid item xs={12} sm={4}>
           <SearchBar value={searchTerm} onChange={handleSearchTermChange} />
         </Grid>
