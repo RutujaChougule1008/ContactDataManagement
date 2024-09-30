@@ -53,7 +53,8 @@ h2 {
 }
 
 .contact-data-form-group input,
-.contact-data-form-group select {
+.contact-data-form-group select,
+.contact-data-form-group textarea{
     flex: none;  
     padding: 8px;
     border: 1px solid #ccc;
@@ -162,3 +163,44 @@ h2 {
     display: flex;
     align-items: center;
 }
+
+.city-master-modal {
+    display: flex; /* Use flexbox to position modals */
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.4); /* Black background with opacity */
+    justify-content: center; /* Center items horizontally */
+    align-items: center; /* Center items vertically */
+  }
+  
+  .city-master-modal-content {
+    background-color: #fefefe;
+    margin: 0 20px; /* Space between modals */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 400px; /* Fixed width for modals */
+    max-width:80%; /* Responsive */
+    position: relative; /* Keep positioning relative to the backdrop */
+    flex: 1; /* Allow modals to share space equally */
+    min-width: 300px; /* Minimum width for each modal */
+  }
+  
+  .city-master-close-btn {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+  }
+  
+  .city-master-close-btn:hover,
+  .city-master-close-btn:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  

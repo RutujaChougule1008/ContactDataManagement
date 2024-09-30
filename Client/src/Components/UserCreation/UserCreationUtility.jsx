@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaSearch } from "react-icons/fa";
-
+import "./UserCreation.css"
 
 function UserCreationUtility() {
-  const apiURL = process.env.REACT_APP_API_URL
+  const apiURL = process.env.REACT_APP_API_URL;
 
   const [fetchedData, setFetchedData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -16,12 +16,10 @@ function UserCreationUtility() {
 
   useEffect(() => {
     const fetchData = async () => {
-   
       try {
-        const apiUrl = `${apiURL}/api/employees/getallusers`;
+        const apiUrl = `${apiURL}/getAllUsers`;
         const response = await fetch(apiUrl);
         const data = await response.json();
-        // console.log("data is",data)
         setFetchedData(data);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -29,18 +27,17 @@ function UserCreationUtility() {
     };
 
     fetchData();
-  }, []);
+  }, [apiURL]);
 
   useEffect(() => {
     const filtered = fetchedData.filter(post => {
       const searchTermLower = searchTerm.toLowerCase();
-      const User_Name = (post.User_Name || '').toLowerCase();
-      const Email = (post.Email || '').toLowerCase();
+      const userName = (post.user_name || '').toLowerCase();
+      const email = (post.email || '').toLowerCase();
 
       return (
         (filterValue === "" || post.group_Type === filterValue) &&
-        (User_Name.includes(searchTermLower) ||
-        (Email.includes(searchTermLower)))
+        (userName.includes(searchTermLower) || email.includes(searchTermLower))
       );
     });
 
@@ -50,12 +47,10 @@ function UserCreationUtility() {
 
   const handleSearchTermChange = (event) => {
     const term = event.target.value;
-    
     setSearchTerm(term);
   };
 
   const pageCount = Math.ceil(filteredData.length / perPage);
-
   const paginatedPosts = filteredData.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   const handlePageChange = (pageNumber) => {
@@ -66,53 +61,48 @@ function UserCreationUtility() {
     navigate("/user_Creation");
   };
   
-  const handleRowClick = (User_Code) => {
-  const selectedEmployee = fetchedData.find((employee) => employee.User_Code === User_Code);
-  navigate("/user_Creation", { state: { editRecordData: selectedEmployee } });
-};
+  const handleRowClick = (userCode) => {
+    const selectedEmployee = fetchedData.find((employee) => employee.user_code === userCode);
+    navigate("/user_Creation", { state: { editRecordData: selectedEmployee } });
+  };
 
-
-
-  const handleBackButton=()=>{
-    navigate("/home")
-  }
+  const handleBackButton = () => {
+    navigate("/home");
+  };
 
   return (
-    <div className="container mt-4">
-    <div className="row">
-      <div className="col-md-6">
-        <button className="btn btn-primary" onClick={handleClick}>
-          Add
-        </button>
-        <button className="btn btn-secondary ms-2" onClick={handleBackButton}>
-          Back
-        </button>
+    <div className="container" >
+      <div className="row">
+        <div className="col-md-6">
+          <button className="btn btn-primary" onClick={handleClick}>
+            Add
+          </button>
+          <button className="btn btn-secondary ms-2" onClick={handleBackButton}>
+            Back
+          </button>
+        </div>
+        <div className="col-md-4 d-flex justify-content-end">
+          <div className="input-group">
+            <input
+              type="text"
+              className="form-control rounded-pill"
+              placeholder="Search By Employee Name..."
+              value={searchTerm}
+              onChange={handleSearchTermChange}
+            />
+            <div className="input-group-append">
+              <button className="btn btn-outline-secondary rounded-pill" type="button">
+                <FaSearch />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-
-      <div className="col-md-4 d-flex justify-content-end">
-  <div className="input-group">
-    <input
-      type="text"
-      className="form-control rounded-pill"
-      placeholder="Search By Employee Name..."
-      value={searchTerm}
-      onChange={handleSearchTermChange}
-    />
-    <div className="input-group-append">
-      <button className="btn btn-outline-secondary rounded-pill" type="button">
-        <FaSearch />
-      </button>
-    </div>
-  </div>
-</div>
-</div>
-
-
-    <br></br>
+      <br />
       
       <table className="table table-bordered table-striped">
-  <thead className="thead-dark">
+        <thead className="thead-dark">
           <tr>
             <th>User Code</th>
             <th>User Name</th>
@@ -124,15 +114,15 @@ function UserCreationUtility() {
         <tbody>
           {paginatedPosts.map((post) => (
             <tr
-              key={post.User_Code}
+              key={post.user_code}
               className="row-item"
-              onDoubleClick={() => handleRowClick(post.User_Code)}
+              onDoubleClick={() => handleRowClick(post.user_code)}
             >
-              <td>{post.User_Code}</td>
-              <td>{post.User_Name}</td>
-              <td>{post.Mobile_No}</td>
-              <td>{post.Email}</td>
-              <td>{post.User_Type}</td>
+              <td>{post.user_code}</td>
+              <td>{post.user_name}</td>
+              <td>{post.mobile_no}</td>
+              <td>{post.email}</td>
+              <td>{post.user_type}</td>
             </tr>
           ))}
         </tbody>
@@ -142,9 +132,7 @@ function UserCreationUtility() {
           {Array.from({ length: pageCount }).map((_, index) => (
             <li
               key={index}
-              className={`page-item ${
-                index + 1 === currentPage ? "active" : ""
-              }`}
+              className={`page-item ${index + 1 === currentPage ? "active" : ""}`}
             >
               <button
                 className="page-link"

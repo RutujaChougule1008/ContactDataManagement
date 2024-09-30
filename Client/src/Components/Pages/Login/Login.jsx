@@ -42,7 +42,7 @@ const LoginPage = () => {
 
     try {
       // Make the API request with axios
-      const response = await axios.post(`http://localhost:8080/api/eBuySugar/userlogin`, {
+      const response = await axios.post(`http://localhost:8080/api/eBuySugar/loginuser`, {
         User_Name: username,
         User_Password: password,
       });
@@ -52,7 +52,8 @@ const LoginPage = () => {
 
       if (response.status === 200) {
         toast.success("Successfully Logged In....")
-        sessionStorage.setItem('access_token', data.access_token);
+        sessionStorage.setItem('access_token', data.token);
+        sessionStorage.setItem('user_type', data.user_type);
         navigate("/home");
       } else {
 

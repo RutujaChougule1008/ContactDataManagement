@@ -12,6 +12,11 @@ import SearchPage from './Components/Pages/SearchPage/SearchPage'
 import SearchPageUtility from './Components/Pages/SearchPage/SearchPageUtility'
 import EventGroupMaster from './Components/Pages/EventGroup/EventGroupMaster';
 import EventGroupUtility from './Components/Pages/EventGroup/EventGroupUtility';
+import { ContactProvider } from '../src/Components/Pages/ContactContext'; 
+import UserCreationUtility from './Components/UserCreation/UserCreationUtility';
+import UserCreationCompoenent from "./Components/UserCreation/UserCreationCompoenent"
+import OrganizationNameSearchPage from './Components/Pages/OrganizationNameSearchPage/OrganizationNameSearchPage';
+import OrganizationNameSearchPageUtility from './Components/Pages/OrganizationNameSearchPage/OrganizationNameSearchPageUtility';
 
 const Pages = styled.div`
   width: 100vw;
@@ -61,7 +66,17 @@ function App() {
             path="/home"
             element={
               <Pages>
-                <Home />
+                <OrganizationNameSearchPage/>
+              </Pages>
+            }
+          />
+
+<Route
+            path="/contact-data-org"
+            element={
+              <Pages>
+
+                <OrganizationNameSearchPageUtility />
               </Pages>
             }
           />
@@ -77,6 +92,7 @@ function App() {
             path="/documents"
             element={
               <Pages>
+
                 <ContactDataDocUtility />
               </Pages>
             }
@@ -123,6 +139,22 @@ function App() {
               </Pages>
             }
           />
+              <Route
+            path="/usercreationutility"
+            element={
+              <Pages>
+                <UserCreationUtility />
+              </Pages>
+            }
+          />
+          <Route
+            path="/user_Creation"
+            element={
+              <Pages>
+                <UserCreationCompoenent />
+              </Pages>
+            }
+          />
         </Routes>
       </AnimatePresence>
     </>
@@ -132,8 +164,10 @@ function App() {
 function AppWithRouter() {
   return (
     <Router>
+    <ContactProvider>
       <App />
-    </Router>
+      </ContactProvider>
+      </Router>
   );
 }
 

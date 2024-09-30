@@ -76,7 +76,7 @@ function EventGroupUtility() {
     };
 
     return (
-        <div className="container" style={{ height: "1000px" }}>
+        <div className="container" style={{ height: "980px" }}>
             <Grid container spacing={3}>
                 <Grid item xs={12}>
                     <Button variant="contained" onClick={handleAddNew}>

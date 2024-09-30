@@ -18,6 +18,8 @@
     "dotenv": "^16.3.1",
     "flatted": "^3.2.9",
     "framer-motion": "^11.5.4",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.3",
     "react": "^18.2.0",
     "react-bootstrap": "^2.9.0",
     "react-dom": "^18.2.0",
@@ -28,7 +30,8 @@
     "react-spinners": "^0.14.1",
     "react-toastify": "^10.0.5",
     "styled-components": "^6.1.13",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "react-scripts start",

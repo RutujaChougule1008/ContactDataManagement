@@ -1,5 +1,5 @@
 import MotionHoc from "./MotionHoc";
-import React from "react";
+import React, { useMemo } from "react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import ActionButtonGroup from "../../common/ActionButtonGroup";
@@ -8,14 +8,20 @@ import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { HashLoader } from "react-spinners";
-import "../Pages/ContactDataDoc.css"
+import "../Pages/ContactDataDoc.css";
+import { useContacts } from "./ContactContext";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
 var newAccoid;
 var newDetailId;
 
-const ContactData = () => {
+const ContactData = ({ ContactIds, closePopup  }) => {
+  const { selectedContacts } = useContacts(); // Access the selected contacts from context
+
+  // If you still want to use ContactIds prop, you can combine it with selectedContacts
+  const contactIdsToUse = ContactIds || selectedContacts;
+
   const [updateButtonClicked, setUpdateButtonClicked] = useState(false);
   const [saveButtonClicked, setSaveButtonClicked] = useState(false);
   const [addOneButtonEnabled, setAddOneButtonEnabled] = useState(false);
@@ -39,28 +45,31 @@ const ContactData = () => {
   const [deleteMode, setDeleteMode] = useState(false);
   const [groupData, setGroupData] = useState([]);
   const [selectedGroups, setSelectedGroups] = useState([]);
-
+  const [contactData, setContactData] = useState(null);
+  const [loading, setLoading] = useState(true); // Loading state
+  const [error, setError] = useState(null); // Error state
 
   const navigate = useNavigate();
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
   const initialFormData = {
-  org_name: '',
-  org_holder_name: '',
-  designation: '',
-  office_address: '',
-  city: '',
-  state: '',
-  country: '',
-  residential_addr: '',
-  landline_no: '',
-  mobile_no: '',
-  email: '',
-  anniversary: '',
-  website: '',
-  DOB: '',
-  mobile_no2: '',
-  email2: ''
+    org_name: "",
+    org_holder_name: "",
+    designation: "",
+    office_address: "",
+    city: "",
+    state: "",
+    country: "",
+    residential_addr: "",
+    landline_no: "",
+    mobile_no: "",
+    email: "",
+    anniversary: "",
+    website: "",
+    DOB: "",
+    mobile_no2: "",
+    email2: "",
+    note:"",
   };
 
   const orgNameRef = useRef(null);
@@ -71,10 +80,9 @@ const ContactData = () => {
     }
   }, []);
 
-
   const [formData, setFormData] = useState(initialFormData);
   const [formDataDetail, setFormDataDetail] = useState({
-   eventCode: ""
+    eventCode: "",
   });
   // Handle change for all inputs
   const handleChange = (event) => {
@@ -85,21 +93,6 @@ const ContactData = () => {
     });
   };
 
-
-  // const validateForm = () => {
-  //   if (!formData.Ac_Name_E.trim()) {
-  //     toast.error("Account Name is required.");
-  //     return false;
-  //   }
-
-  //   if (!formData.City_Code) {
-  //     toast.error("City Code is required.");
-  //     return false;
-  //   }
-  //   return true;
-  // };
-
-
   const handleCheckboxAcGroups = (e, group) => {
     const { checked } = e.target;
 
@@ -109,7 +102,7 @@ const ContactData = () => {
         return [...prevSelected, group.eventCode];
       } else {
         console.log("Removing group from selectedGroups:", group.eventCode);
-      
+
         return prevSelected.filter(
           (groupCode) => groupCode !== group.eventCode
         );
@@ -118,9 +111,7 @@ const ContactData = () => {
     console.log("Selected Groups:", selectedGroups);
   };
 
-  console.log("SelectedGroup", selectedGroups)
-  
-  
+  console.log("SelectedGroup", selectedGroups);
 
   const handleAddOne = () => {
     setAddOneButtonEnabled(false);
@@ -131,7 +122,7 @@ const ContactData = () => {
     setIsEditing(true);
     setFormData(initialFormData);
     setAccountDetail([]);
-    setSelectedGroups([])
+    setSelectedGroups([]);
   };
 
   const handleSaveOrUpdate = async () => {
@@ -142,65 +133,66 @@ const ContactData = () => {
 
     if (isEditMode) {
       delete master_data.contact_Id;
-  }
+    }
 
-   
     const contact_data = Array.from(selectedGroups).map((groupCode) => {
-        const detail = accountDetail.find((d) => d.eventCode === groupCode);
-        return {
-            eventCode: [groupCode],  
-            contactdetail_id: detail ? detail.contactdetail_id : null  ,
-             rowaction: detail ? "update" : "add"
-        };
+      const detail = accountDetail.find((d) => d.eventCode === groupCode);
+      return {
+        eventCode: [groupCode],
+        contactdetail_id: detail ? detail.contactdetail_id : null,
+        rowaction: detail ? "update" : "add",
+      };
     });
 
-    
     if (isEditMode) {
-        const deselectedGroups = accountDetail
-            .filter((detail) => !selectedGroups.includes(detail.eventCode))
-            .map((detail) => ({
-                eventCode: [detail.eventCode],  
-                rowaction: "delete",
-                contactdetail_id: detail.contactdetail_id
-            }));
+      const deselectedGroups = accountDetail
+        .filter((detail) => !selectedGroups.includes(detail.eventCode))
+        .map((detail) => ({
+          eventCode: [detail.eventCode],
+          rowaction: "delete",
+          contactdetail_id: detail.contactdetail_id,
+        }));
 
-        contact_data.push(...deselectedGroups); 
+      contact_data.push(...deselectedGroups);
     }
 
     const requestData = {
-        master_data,
-        contact_data,
+      master_data,
+      contact_data,
     };
 
     try {
-        let response;
+      let response;
 
-        if (isEditMode) {
-            const updateApiUrl = `${API_URL}/update-contactData?contact_Id=${newAccoid}`;
-            response = await axios.put(updateApiUrl, requestData);
-            toast.success("Data updated successfully!");
-        } else {
-            response = await axios.post(`${API_URL}/insert-contactData`, requestData);
-            toast.success("Data saved successfully!");
-        }
+      if (isEditMode) {
+        const updateApiUrl = `${API_URL}/update-contactData?contact_Id=${newAccoid}`;
+        response = await axios.put(updateApiUrl, requestData);
+        toast.success("Data updated successfully!");
+      } else {
+        response = await axios.post(
+          `${API_URL}/insert-contactData`,
+          requestData
+        );
+        toast.success("Data saved successfully!");
+      }
 
-        setIsEditMode(false);
-        setAddOneButtonEnabled(true);
-        setEditButtonEnabled(true);
-        setDeleteButtonEnabled(true);
-        setBackButtonEnabled(true);
-        setSaveButtonEnabled(false);
-        setCancelButtonEnabled(false);
-        setIsEditing(false);
-        setIsLoading(false);
+      setIsEditMode(false);
+      setAddOneButtonEnabled(true);
+      setEditButtonEnabled(true);
+      setDeleteButtonEnabled(true);
+      setBackButtonEnabled(true);
+      setSaveButtonEnabled(false);
+      setCancelButtonEnabled(false);
+      setIsEditing(false);
+      setIsLoading(false);
 
-        window.location.reload();  
+      window.location.reload();
     } catch (error) {
-        console.error("Error during API call:", error);
-        toast.error(`Error occurred while saving data: ${error.message}`);
-        setIsLoading(false);
+      console.error("Error during API call:", error);
+      toast.error(`Error occurred while saving data: ${error.message}`);
+      setIsLoading(false);
     }
-};
+  };
 
   const handleEdit = () => {
     setIsEditMode(true);
@@ -213,56 +205,54 @@ const ContactData = () => {
     setIsEditing(true);
   };
   const handleCancel = () => {
-  axios
-    .get(`${API_URL}/get-lastcontactdata`)
-    .then((response) => {
-      const data = response.data.account_master_data;
-      const detailData = response.data.account_detail_data || [];
+    axios
+      .get(`${API_URL}/get-lastcontactdata`)
+      .then((response) => {
+        const data = response.data.account_master_data;
+        const detailData = response.data.account_detail_data || [];
 
-      newAccoid = data.contact_Id;
+        newAccoid = data.contact_Id;
 
-     
-      newDetailId = detailData.length > 0 && detailData[0].contactdetail_id ? detailData[0].contactdetail_id : null;
-      console.log(data);
+        newDetailId =
+          detailData.length > 0 && detailData[0].contactdetail_id
+            ? detailData[0].contactdetail_id
+            : null;
+        console.log(data);
 
-      setFormData({
-        ...formData,
-        ...data,
+        setFormData({
+          ...formData,
+          ...data,
+        });
+
+        setAccountData(data || {});
+        setAccountDetail(detailData || []);
+
+        console.log("Account Detail", detailData);
+
+        const eventCodes = detailData
+          .map((detail) => detail.eventCode)
+          .filter((eventCode) => eventCode !== null && eventCode !== undefined);
+
+        setSelectedGroups(eventCodes || []);
+      })
+      .catch((error) => {
+        console.error("Error fetching latest data for edit:", error);
       });
 
-      setAccountData(data || {});
-      setAccountDetail(detailData || []);
-
-      console.log("Account Detail", detailData);
-
-      
-      const eventCodes = detailData
-        .map((detail) => detail.eventCode)
-        .filter((eventCode) => eventCode !== null && eventCode !== undefined);
-
-      setSelectedGroups(eventCodes || []); 
-    })
-    .catch((error) => {
-      console.error("Error fetching latest data for edit:", error);
-    });
-
-  
-  setIsEditing(false);
-  setIsEditMode(false);
-  setAddOneButtonEnabled(true);
-  setEditButtonEnabled(true);
-  setDeleteButtonEnabled(true);
-  setBackButtonEnabled(true);
-  setSaveButtonEnabled(false);
-  setCancelButtonEnabled(false);
-  setCancelButtonClicked(true);
-};
+    setIsEditing(false);
+    setIsEditMode(false);
+    setAddOneButtonEnabled(true);
+    setEditButtonEnabled(true);
+    setDeleteButtonEnabled(true);
+    setBackButtonEnabled(true);
+    setSaveButtonEnabled(false);
+    setCancelButtonEnabled(false);
+    setCancelButtonClicked(true);
+  };
 
   const fetchGroupData = () => {
     axios
-      .get(
-        `${API_URL}/event_groups`
-      )
+      .get(`${API_URL}/event_groups`)
       .then((response) => {
         const data = response.data;
         setGroupData(data);
@@ -292,6 +282,7 @@ const ContactData = () => {
         const response = await axios.delete(deleteApiUrl);
         toast.success("Record deleted successfully!");
         handleCancel();
+        closePopup();
       } catch (error) {
         toast.error("Deletion cancelled");
         console.error("Error during API call:", error);
@@ -320,8 +311,10 @@ const ContactData = () => {
 
       newAccoid = data.contact_Id;
 
-     
-      newDetailId = detailData.length > 0 && detailData[0].contactdetail_id ? detailData[0].contactdetail_id : null;
+      newDetailId =
+        detailData.length > 0 && detailData[0].contactdetail_id
+          ? detailData[0].contactdetail_id
+          : null;
       console.log(data);
 
       setFormData({
@@ -334,12 +327,11 @@ const ContactData = () => {
 
       console.log("Account Detail", detailData);
 
-     
       const eventCodes = detailData
         .map((detail) => detail.eventCode)
         .filter((eventCode) => eventCode !== null && eventCode !== undefined);
 
-      setSelectedGroups(eventCodes || []);  
+      setSelectedGroups(eventCodes || []);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -363,76 +355,39 @@ const ContactData = () => {
     }
   }, [selectedRecord]);
 
-  // //change No functionality to get that particular record
-  // const handleKeyDown = async (event) => {
-  //   if (event.key === "Tab") {
-  //     const changeNoValue = event.target.value;
-  //     try {
-  //       const response = await axios.get(
-  //         `${API_URL}/getaccountmasterByid?Company_Code=${companyCode}&Ac_Code=${changeNoValue}`
-  //       );
-  //       const data = response.data.account_master_data;
-  //       const labels = response.data.account_labels;
-  //       const detailData = response.data.account_detail_data;
-  //       const groupCodes = data.group_codes ?? [];
-  //       newAccoid = data.accoid;
-  //       newCity_Code = data.City_Code;
-  //       cityName = labels.cityname;
-  //       grpName = labels.groupcodename;
-  //       newGroup_Code = data.Group_Code;
-  //       gstStateName = labels.State_Name;
-  //       newGSTStateCode = data.GSTStateCode;
-  //       console.log(data);
-  //       setFormData({
-  //         ...formData,
-  //         ...data,
-  //       });
-  //       setAccountData(data || {});
-  //       setAccountDetail(detailData || []);
-  //       setSelectedGroups(groupCodes);
-  //     } catch (error) {
-  //       console.error("Error fetching data:", error);
-  //     }
-  //   }
-  // };
-
   //Navigation Buttons
   const handleFirstButtonClick = async () => {
     try {
-      const response = await fetch(
-        `${API_URL}/get-firstcontact-navigation`
-      );
+      const response = await fetch(`${API_URL}/get-firstcontact-navigation`);
       if (response.ok) {
-        const data = await response.json(); 
+        const data = await response.json();
 
-        
         const accountMasterData = data.account_master_data;
         const detailData = data.account_detail_data || [];
 
-        
         newAccoid = accountMasterData.contact_Id;
-        newDetailId = detailData.length > 0 && detailData[0].contactdetail_id ? detailData[0].contactdetail_id : null;
+        newDetailId =
+          detailData.length > 0 && detailData[0].contactdetail_id
+            ? detailData[0].contactdetail_id
+            : null;
 
         console.log("Account Master Data:", accountMasterData);
         console.log("Detail Data:", detailData);
 
-       
         setFormData((prevFormData) => ({
-            ...prevFormData,
-            ...accountMasterData,
+          ...prevFormData,
+          ...accountMasterData,
         }));
 
-        
         setAccountData(accountMasterData || {});
         setAccountDetail(detailData || []);
 
         // Map event codes from detail data (filtering out any null/undefined eventCode values)
         const eventCodes = detailData
-            .map((detail) => detail.eventCode)
-            .filter((eventCode) => eventCode !== null && eventCode !== undefined);
+          .map((detail) => detail.eventCode)
+          .filter((eventCode) => eventCode !== null && eventCode !== undefined);
 
-        
-        setSelectedGroups(eventCodes || []);  
+        setSelectedGroups(eventCodes || []);
       } else {
         console.error(
           "Failed to fetch first record:",
@@ -447,54 +402,49 @@ const ContactData = () => {
 
   const handlePreviousButtonClick = async () => {
     try {
-        
-        const response = await fetch(
-            `${API_URL}/get-previouscontact-navigation?current_contactId=${newAccoid}`
+      const response = await fetch(
+        `${API_URL}/get-previouscontact-navigation?current_contactId=${newAccoid}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+
+        const accountMasterData = data.account_master_data;
+        const detailData = data.account_detail_data || [];
+
+        newAccoid = accountMasterData.contact_Id;
+        newDetailId =
+          detailData.length > 0 && detailData[0].contactdetail_id
+            ? detailData[0].contactdetail_id
+            : null;
+
+        console.log("Account Master Data:", accountMasterData);
+        console.log("Detail Data:", detailData);
+
+        setFormData((prevFormData) => ({
+          ...prevFormData,
+          ...accountMasterData,
+        }));
+
+        setAccountData(accountMasterData || {});
+        setAccountDetail(detailData || []);
+
+        const eventCodes = detailData
+          .map((detail) => detail.eventCode)
+          .filter((eventCode) => eventCode !== null && eventCode !== undefined);
+
+        setSelectedGroups(eventCodes || []);
+      } else {
+        console.error(
+          "Failed to fetch previous record:",
+          response.status,
+          response.statusText
         );
-
-        if (response.ok) {
-            const data = await response.json(); 
-
-            
-            const accountMasterData = data.account_master_data;
-            const detailData = data.account_detail_data || [];
-
-           
-            newAccoid = accountMasterData.contact_Id;
-            newDetailId = detailData.length > 0 && detailData[0].contactdetail_id ? detailData[0].contactdetail_id : null;
-
-            console.log("Account Master Data:", accountMasterData);
-            console.log("Detail Data:", detailData);
-
-            
-            setFormData((prevFormData) => ({
-                ...prevFormData,
-                ...accountMasterData,
-            }));
-
-            
-            setAccountData(accountMasterData || {});
-            setAccountDetail(detailData || []);
-
-            
-            const eventCodes = detailData
-                .map((detail) => detail.eventCode)
-                .filter((eventCode) => eventCode !== null && eventCode !== undefined);
-
-            
-            setSelectedGroups(eventCodes || []);
-
-        } else {
-            console.error(
-                "Failed to fetch previous record:",
-                response.status,
-                response.statusText
-            );
-        }
+      }
     } catch (error) {
-        console.error("Error during API call:", error);
+      console.error("Error during API call:", error);
     }
-};
+  };
 
   const handleNextButtonClick = async () => {
     try {
@@ -503,34 +453,33 @@ const ContactData = () => {
       );
 
       if (response.ok) {
-        const data = await response.json(); 
+        const data = await response.json();
 
         const accountMasterData = data.account_master_data;
         const detailData = data.account_detail_data || [];
 
-        
         newAccoid = accountMasterData.contact_Id;
-        newDetailId = detailData.length > 0 && detailData[0].contactdetail_id ? detailData[0].contactdetail_id : null;
+        newDetailId =
+          detailData.length > 0 && detailData[0].contactdetail_id
+            ? detailData[0].contactdetail_id
+            : null;
 
         console.log("Account Master Data:", accountMasterData);
         console.log("Detail Data:", detailData);
 
-       
         setFormData((prevFormData) => ({
-            ...prevFormData,
-            ...accountMasterData,
+          ...prevFormData,
+          ...accountMasterData,
         }));
 
-       
         setAccountData(accountMasterData || {});
         setAccountDetail(detailData || []);
 
         // Map event codes from detail data (filtering out any null/undefined eventCode values)
         const eventCodes = detailData
-            .map((detail) => detail.eventCode)
-            .filter((eventCode) => eventCode !== null && eventCode !== undefined);
+          .map((detail) => detail.eventCode)
+          .filter((eventCode) => eventCode !== null && eventCode !== undefined);
 
-        
         setSelectedGroups(eventCodes || []);
       } else {
         console.error(
@@ -544,10 +493,58 @@ const ContactData = () => {
     }
   };
 
-  const handleEtender = () => {
-    navigate("/eBuySugarian-user-utility");
-  };
+  useEffect(() => {
+    const fetchContactData = async (id) => {
+      const response = await axios.get(
+        `${API_URL}/getcontactDataByid?contact_Id=${id}`
+      );
+      const data = response.data.account_master_data;
+      const detailData = response.data.account_detail_data || [];
+      newAccoid = response.data.account_master_data.contact_Id
 
+      setFormData((prev) => ({
+        ...prev,
+        ...data,
+      }));
+
+      setAccountData(data || {});
+      setAccountDetail(detailData || []);
+
+      const eventCodes = detailData
+        .map((detail) => detail.eventCode)
+        .filter((eventCode) => eventCode !== null && eventCode !== undefined);
+
+      setSelectedGroups((prev) => [...new Set([...prev, ...eventCodes])]);
+    };
+
+    const fetchAllContactData = async () => {
+      setIsLoading(true);
+      try {
+        for (const id of contactIdsToUse) {
+          await fetchContactData(id);
+        }
+      } catch (error) {
+        console.error("Error fetching contact data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+      setIsEditMode(false);
+      setAddOneButtonEnabled(true);
+      setEditButtonEnabled(true);
+      setDeleteButtonEnabled(true);
+      setBackButtonEnabled(true);
+      setSaveButtonEnabled(false);
+      setCancelButtonEnabled(false);
+      setUpdateButtonClicked(true);
+      setIsEditing(false);
+    };
+
+    if (contactIdsToUse && contactIdsToUse.length > 0) {
+      fetchAllContactData();
+    }
+  }, [contactIdsToUse]);
+
+  
   return (
     <>
       <ToastContainer />
@@ -583,7 +580,6 @@ const ContactData = () => {
 
       <div className="contact-data-form-container">
         <form>
-
           <div className="contact-data-form-group">
             <label htmlFor="org_name">Organization Name:</label>
             <input
@@ -761,7 +757,19 @@ const ContactData = () => {
               disabled={!isEditing && addOneButtonEnabled}
             />
           </div>
-          
+          <div className="contact-data-form-group">
+            <label htmlFor="note">Note:</label>
+            <textarea
+              type="text"
+              id="note"
+              name="note"
+              value={formData.note}
+              onChange={handleChange}
+              disabled={!isEditing && addOneButtonEnabled}
+              rows={3}
+            />
+          </div>
+
           <div className="contact-data-form-table ">
             <table className="custom-table">
               <thead>
@@ -778,13 +786,12 @@ const ContactData = () => {
                     <td>{group.eventName}</td>
                     {/* <td>{group.contact_Id}</td> */}
                     <td>
-                    <input
-          type="checkbox"
-          checked={selectedGroups.includes(group.eventCode)} 
-          onChange={(e) => handleCheckboxAcGroups(e, group)}
-          disabled={!isEditing && addOneButtonEnabled}
-        />
-                     
+                      <input
+                        type="checkbox"
+                        checked={selectedGroups.includes(group.eventCode)}
+                        onChange={(e) => handleCheckboxAcGroups(e, group)}
+                        disabled={!isEditing && addOneButtonEnabled}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -799,19 +806,11 @@ const ContactData = () => {
             </div>
           </div>
         )}
-
       </div>
     </>
   );
 };
 
-
-
-const ContactDataDoc= MotionHoc(ContactData) ;
-
+const ContactDataDoc = MotionHoc(ContactData);
 
 export default ContactDataDoc;
-
-
-
-

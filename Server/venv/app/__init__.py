@@ -26,6 +26,7 @@ jwt = JWTManager(app)
 from app.Controllers.ContactDataController import *
 from app.Controllers.EventGroup.EventGroupController import *
 from app.Controllers.Login.LoginController import *
+from app.Controllers.UserCreationController import *
 
 
 

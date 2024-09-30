@@ -24,7 +24,7 @@ import "jspdf-autotable";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-const SearchPageUtility = () => {
+const OrganizationNameSearchPageUtility = () => {
   const [contactData, setContactData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,7 +34,8 @@ const SearchPageUtility = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const location = useLocation();
 
-  const { eventCodes, eventNames } = location.state;
+  // Get selected organization names from location state
+  const { orgNames, selectedOrgNames } = location.state || {};
 
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
@@ -47,18 +48,17 @@ const SearchPageUtility = () => {
     setAnchorEl(null);
   };
 
-  // Function to fetch contact data from the API
+  // Fetch contact data by organization names
   const fetchContactData = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const response = await axios.get(`${API_URL}/contact_data`, {
-        params: {
-          eventCode: eventCodes,
-        },
-        paramsSerializer: (params) => new URLSearchParams(params).toString(),
-      });
+        const response = await axios.get(`${API_URL}/contact_data_by_orgname`, {
+          params: {
+            org_names: selectedOrgNames.join(','),  
+          }
+        });
 
       setContactData(response.data);
       setFilteredData(response.data);
@@ -70,10 +70,10 @@ const SearchPageUtility = () => {
   };
 
   useEffect(() => {
-    if (eventCodes && eventCodes.length > 0) {
+    if (orgNames && orgNames.length > 0) {
       fetchContactData();
     }
-  }, [eventCodes]);
+  }, [orgNames]);
 
   // Filter the data based on the search term
   useEffect(() => {
@@ -117,12 +117,12 @@ const SearchPageUtility = () => {
     const worksheet = XLSX.utils.json_to_sheet(filteredData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Contact Data");
-    const sanitizedEventNames =
-      eventNames && eventNames.length > 0
-        ? eventNames.join("_").replace(/[\/:*?"<>|]/g, "")
+    const sanitizedOrgNames =
+      selectedOrgNames && selectedOrgNames.length > 0
+        ? selectedOrgNames.join("_").replace(/[\/:*?"<>|]/g, "")
         : "Contact_Data_Search";
 
-    XLSX.writeFile(workbook, `${sanitizedEventNames}.xlsx`);
+    XLSX.writeFile(workbook, `${sanitizedOrgNames}.xlsx`);
   };
 
   const exportToPDF = () => {
@@ -157,8 +157,8 @@ const SearchPageUtility = () => {
     ]);
 
     doc.text(
-      eventNames && eventNames.length > 0
-        ? `Report for: ${eventNames.join(", ")}`
+      selectedOrgNames && selectedOrgNames.length > 0
+        ? `Report for: ${selectedOrgNames.join(", ")}`
         : "Contact Data Search",
       14,
       10
@@ -193,16 +193,17 @@ const SearchPageUtility = () => {
     });
 
     doc.save(
-      eventNames && eventNames.length > 0
-        ? `Report for: ${eventNames.join(", ")}`
+      selectedOrgNames && selectedOrgNames.length > 0
+        ? `Report for: ${selectedOrgNames.join(", ")}`
         : "Contact Data Search.pdf"
     );
   };
+
   return (
     <div style={{ padding: "20px" }}>
       <Typography variant="h4" gutterBottom textAlign="center">
-        {eventNames && eventNames.length > 0
-          ? `Report for: ${eventNames.join(", ")}`
+        {selectedOrgNames && selectedOrgNames.length > 0
+          ? `Report for: ${selectedOrgNames.join(", ")}`
           : "Contact Data Search"}
       </Typography>
 
@@ -329,4 +330,4 @@ const SearchPageUtility = () => {
   );
 };
 
-export default SearchPageUtility;
+export default OrganizationNameSearchPageUtility;

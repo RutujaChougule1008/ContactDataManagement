@@ -23,6 +23,7 @@ class ContactDataBankHead(db.Model):
     DOB = Column(Date, nullable=True)
     mobile_no2 = Column(String(255), nullable=True)
     email2 = Column(String(255), nullable=True)
+    note = Column(String(max), nullable=True)
 
 
 class ContactDataBankDetail(db.Model):

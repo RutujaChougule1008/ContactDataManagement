@@ -75,7 +75,7 @@ const Sidebar = () => {
           transition: 'all 0.5s ease',
           borderRadius: '0 30px 30px 0'
         }}>
-          {[{ icon: Home, text: "Home", link: "/home" }, { icon: Team, text: "Team", link: "/team" }, { icon: Calender, text: "Calender", link: "/calender" }, { icon: Documents, text: "Documents", link: "/documents" }, { icon: Projects, text: "Projects", link: "/projects" }].map((item, index) => (
+          {[{ icon: Home, text: "Home", link: "/home" }, { icon: Team, text: "Team", link: "/usercreationutility" }, { icon: Calender, text: "Calender", link: "/calender" }, { icon: Documents, text: "Documents", link: "/documents" }, { icon: Projects, text: "Projects", link: "/projects" }].map((item, index) => (
             <NavLink
               key={index}
               to={item.link}

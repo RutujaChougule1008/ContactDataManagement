@@ -1,0 +1,120 @@
+.user-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center; 
+    width: 100%;
+    max-width: 1200px;
+    margin: 20px auto;
+    background-color: #f4f7f9;
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+    position: relative;
+}
+
+/* Container for both Action and Navigation buttons */
+.button-navigation-container {
+    display: flex;
+    justify-content: space-between; /* Spread both groups to occupy available space */
+    align-items: center; /* Ensure both button groups are vertically centered */
+    width: 100%;
+    max-width: 1200px;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    margin-top: 20px;
+    flex-wrap: nowrap; /* Prevent wrapping to keep buttons on the same line */
+}
+
+/* Ensure both containers align properly */
+.button-container, .navigation-container {
+    display: flex;
+    gap: 20px;
+    align-items: center; /* Vertically align buttons within the container */
+}
+
+/* Form content styling */
+.form-content {
+    width: 100%;
+    max-width: 1000px;
+    display: flex;
+    flex-direction: column; 
+    align-items: flex-start;
+}
+
+/* Form group styling */
+.user-form-group {
+    margin-bottom: 15px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.user-form-group label {
+    flex: 0 0 150px; 
+    margin-right: 20px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #666;
+    text-align: right;
+}
+
+.user-form-group input,
+.user-form-group select {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: #fff;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Button styling */
+.button-container button,
+.navigation-container button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.button-container button:hover,
+.navigation-container button:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+.button-container button:disabled,
+.navigation-container button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+    .button-navigation-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .form-content {
+        align-items: flex-start;
+    }
+
+    .user-form-group {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .user-form-group label {
+        margin-bottom: 5px;
+    }
+}
