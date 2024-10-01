@@ -161,7 +161,7 @@ function ContactDataDocUtility() {
       first: firstContactData,
       second: secondContactData,
     });
-
+    setSearchTerm("")
   };
 
   const handleClosePopup = () => {
