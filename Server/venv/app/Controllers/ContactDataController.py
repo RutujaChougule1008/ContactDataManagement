@@ -424,19 +424,19 @@ def get_contact_data():
 
         # Example of how to use event_codes in a SQL query
         query = text("""
-            SELECT h.org_name, h.contact_Id, h.org_holder_name, h.city, h.designation, h.state, h.country, h.mobile_no, h.email, h.website, h.anniversary, h.DOB
+            SELECT h.org_name, h.contact_Id, h.org_holder_name, h.city, h.designation, h.state, h.country, h.mobile_no, h.email, h.website, h.anniversary, h.DOB, e.eventName
             FROM dbo.Contact_Data_Bank_Head AS h
             LEFT OUTER JOIN dbo.Contact_Data_Bank_Detail AS d ON h.contact_Id = d.contact_Id
             LEFT OUTER JOIN dbo.EventGroup AS e ON d.eventCode = e.eventCode
             WHERE e.eventCode IN :eventCodes
-            GROUP BY h.org_name, h.contact_Id, h.org_holder_name, h.city, h.designation, h.state, h.country, h.mobile_no, h.email, h.website, h.anniversary, h.DOB
-            HAVING COUNT(DISTINCT e.eventCode) = :number_of_event_codes
+            GROUP BY h.org_name, h.contact_Id, h.org_holder_name, h.city, h.designation, h.state, h.country, h.mobile_no, h.email, h.website, h.anniversary, h.DOB, e.eventName
+
             ORDER BY h.org_name
         """)
 
         result = db.session.execute(query, {
-            'eventCodes': tuple(event_codes),  # Use tuple to pass multiple values
-            'number_of_event_codes': number_of_event_codes
+            'eventCodes': tuple(event_codes),  
+            
         })
 
         # Construct the response as a list of dictionaries
@@ -453,7 +453,8 @@ def get_contact_data():
                 'email': row.email,
                 'website': row.website,
                 'anniversary': row.anniversary.strftime('%Y-%m-%d') if row.anniversary else None,
-                'DOB': row.DOB.strftime('%Y-%m-%d') if row.DOB else None
+                'DOB': row.DOB.strftime('%Y-%m-%d') if row.DOB else None,
+                'eventName': row.eventName,
             }
             for row in result
         ]

@@ -17,7 +17,7 @@ const UserCreationComponent = () => {
     Mobile_No: "",
     Email: "",
     Password: "",
-    User_Type: "U",
+    User_Type:"V",
   });
 
   const [addOneButtonEnabled, setAddOneButtonEnabled] = useState(true);
@@ -67,7 +67,7 @@ const UserCreationComponent = () => {
           Mobile_No: "",
           Email: "",
           Password: "",
-          User_Type: "U",
+          User_Type:"V",
         });
       })
       .catch((error) => {
@@ -168,7 +168,7 @@ const UserCreationComponent = () => {
         Mobile_No: firstRecord.mobile_no,
         Email: firstRecord.email,
         Password: firstRecord.password,
-        User_Type: firstRecord.user_type || "U",
+        User_Type: firstRecord.user_type ||"V",
       });
       setEditButtonEnabled(true);  
       setDeleteButtonEnabled(true);
@@ -184,7 +184,7 @@ const UserCreationComponent = () => {
         Mobile_No: lastRecord.mobile_no,
         Email: lastRecord.email,
         Password: lastRecord.password,
-        User_Type: lastRecord.user_type || "U",
+        User_Type: lastRecord.user_type ||"V",
       });
       setEditButtonEnabled(true);  
       setDeleteButtonEnabled(true);
@@ -202,7 +202,7 @@ const UserCreationComponent = () => {
           Mobile_No: previousRecord.mobile_no,
           Email: previousRecord.email,
           Password: previousRecord.password,
-          User_Type: previousRecord.user_type || "U",
+          User_Type: previousRecord.user_type ||"V",
         });
         setEditButtonEnabled(true);  
         setDeleteButtonEnabled(true);
@@ -223,7 +223,7 @@ const UserCreationComponent = () => {
           Mobile_No: nextRecord.mobile_no,
           Email: nextRecord.email,
           Password: nextRecord.password,
-          User_Type: nextRecord.user_type || "U",
+          User_Type: nextRecord.user_type ||"V",
         });
         setEditButtonEnabled(true);  
         setDeleteButtonEnabled(true); 
@@ -246,7 +246,7 @@ const UserCreationComponent = () => {
         Mobile_No: editRecordData.mobile_no,
         Email: editRecordData.email,
         Password: editRecordData.password,
-        User_Type: editRecordData.user_type || "U",
+        User_Type: editRecordData.user_type ||"V",
       });
       setAddOneButtonEnabled(true);
       setEditButtonEnabled(true);

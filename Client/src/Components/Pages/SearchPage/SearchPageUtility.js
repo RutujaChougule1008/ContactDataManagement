@@ -335,6 +335,7 @@ const SearchPageUtility = () => {
                   <TableCell>Website URL</TableCell>
                   <TableCell>Anniversaty</TableCell>
                   <TableCell>DOB</TableCell>
+                  <TableCell>Category Name</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -364,6 +365,7 @@ const SearchPageUtility = () => {
                     <TableCell>{data.website || ""}</TableCell>
                     <TableCell>{data.anniversary || ""}</TableCell>
                     <TableCell>{data.DOB || ""}</TableCell>
+                    <TableCell>{data.eventName || ""}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
