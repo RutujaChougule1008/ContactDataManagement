@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -25,6 +25,9 @@ import "jspdf-autotable";
 const API_URL = process.env.REACT_APP_API_URL;
 
 const SearchPageUtility = () => {
+  const userRole = sessionStorage.getItem("user_type");
+  const isViewer = userRole === "V";
+
   const [contactData, setContactData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,7 +35,9 @@ const SearchPageUtility = () => {
   const [loading, setLoading] = useState(false);
   const [perPage, setPerPage] = useState(15);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedRecord, setSelectedRecord] = useState(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const { eventCodes, eventNames } = location.state;
 
@@ -100,6 +105,7 @@ const SearchPageUtility = () => {
 
   const handleSearchTermChange = (event) => {
     setSearchTerm(event.target.value);
+    localStorage.setItem("contactSearchTerm", event.target.value);
   };
 
   const pageCount = Math.ceil(filteredData.length / perPage);
@@ -128,62 +134,71 @@ const SearchPageUtility = () => {
   const exportToPDF = () => {
     const doc = new jsPDF("landscape");
 
+    // Sanitize the event names to remove special characters except spaces
+    const sanitizedEventNames =
+      eventNames && eventNames.length > 0
+        ? eventNames.join(" ").replace(/[^\w\s]/g, "")
+        : "Client Connect Report";
+
     const tableColumn = [
+      "Sr No", // Serial number column
       "Organization Name",
-      "Owner Name",
+      "Name",
       "Designation",
       "City",
       "State",
       "Country",
       "Mobile No",
       "Email",
-      "Website",
-      "Anniversary",
-      "DOB",
     ];
 
-    const tableRows = filteredData.map((data) => [
-      data.org_name || "",
-      data.org_holder_name || "",
-      data.designation || "",
-      data.city || "",
-      data.state || "",
-      data.country || "",
-      data.mobile_no || "",
-      data.email || "",
-      data.website || "",
-      data.anniversary || "",
-      data.DOB || "",
-    ]);
+    let tableRows = [];
+    let currentSerialNumber = 1; // Initialize serial number counter
 
-    doc.text(
-      eventNames && eventNames.length > 0
-        ? `Report for: ${eventNames.join(", ")}`
-        : "Contact Data Search",
-      14,
-      10
-    );
+    filteredData.forEach((data, index) => {
+      const isDuplicateOrg =
+        index > 0 && data.org_name === filteredData[index - 1].org_name;
 
+      tableRows.push([
+        !isDuplicateOrg ? currentSerialNumber++ : "", // Only increment serial number for the first occurrence of an organization
+        !isDuplicateOrg ? data.org_name || "" : "", // If duplicate, don't show org name
+        data.org_holder_name || "",
+        data.designation || "",
+        data.city || "",
+        data.state || "",
+        data.country || "",
+        formatMultipleValues(data.mobile_no) || "",
+        formatMultipleValues(data.email) || "",
+      ]);
+    });
+
+    doc.setFontSize(12);
+    const titleText = sanitizedEventNames;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const textWidth = doc.getTextWidth(titleText);
+    doc.text(titleText, (pageWidth - textWidth) / 2, 20); // Centering title
+
+    // Add the table after the title with more space from the top
     doc.autoTable({
       head: [tableColumn],
       body: tableRows,
-      startY: 20,
-      margin: { top: 20, bottom: 10, left: 10, right: 10 },
+      startY: 25, // More space from the top
+      margin: { top: 40, bottom: 10, left: 10, right: 10 },
       styles: { fontSize: 8, overflow: "linebreak", cellPadding: 2 },
       columnStyles: {
-        0: { cellWidth: 30 },
-        1: { cellWidth: 30 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 20 },
-        4: { cellWidth: 20 },
-        5: { cellWidth: 20 },
-        6: { cellWidth: 25 },
+        0: { cellWidth: 10 }, // Serial Number column
+        1: { cellWidth: 38 },
+        2: { cellWidth: 38 },
+        3: { cellWidth: 28 },
+        4: { cellWidth: 28 },
+        5: { cellWidth: 28 },
+        6: { cellWidth: 28 },
         7: { cellWidth: 35 },
-        8: { cellWidth: 35 },
-        9: { cellWidth: 25 },
-        10: { cellWidth: 25 },
+        8: { cellWidth: 45 },
       },
       didDrawPage: function (data) {
+        // Add small-sized page numbers
+        doc.setFontSize(8);
         doc.text(
           `Page ${data.pageNumber}`,
           data.settings.margin.left,
@@ -192,18 +207,47 @@ const SearchPageUtility = () => {
       },
     });
 
-    doc.save(
-      eventNames && eventNames.length > 0
-        ? `Report for: ${eventNames.join(", ")}`
-        : "Contact Data Search.pdf"
-    );
+    // Save the file with a sanitized title
+    doc.save(sanitizedEventNames + ".pdf");
   };
+
+  // Helper function to format multiple values in one cell (for mobile numbers or emails)
+  const formatMultipleValues = (value) => {
+    if (!value) return "";
+    // Check if the value contains multiple entries (comma-separated or space-separated)
+    const values = value.split(/[, ]+/);
+    return values.join("\n"); // Join with a newline to place values one below another
+  };
+
+  const handleRowClick = (contact_Id) => {
+    const selectedRecord = filteredData.find(
+      (record) => record.contact_Id === contact_Id
+    );
+    localStorage.setItem("selectedRecord", JSON.stringify(selectedRecord));
+
+    navigate("/contactData", { state: { selectedRecord } });
+  };
+
+  useEffect(() => {
+    if (eventCodes && eventCodes.length > 0) {
+      fetchContactData();
+    }
+
+    // Retrieve selected record from localStorage on component mount
+    const savedRecord = JSON.parse(
+      localStorage.getItem("selectedRecord") || "null"
+    );
+    if (savedRecord) {
+      setSelectedRecord(savedRecord); // Set it in state
+    }
+  }, [eventCodes]);
+
   return (
     <div style={{ padding: "20px" }}>
       <Typography variant="h4" gutterBottom textAlign="center">
         {eventNames && eventNames.length > 0
           ? `Report for: ${eventNames.join(", ")}`
-          : "Contact Data Search"}
+          : "Client Connect"}
       </Typography>
 
       {loading && (
@@ -223,7 +267,7 @@ const SearchPageUtility = () => {
       )}
 
       <Grid container justifyContent="flex-end" sx={{ marginBottom: 2 }}>
-        <Button variant="contained" onClick={handleClick}>
+        <Button variant="contained" onClick={handleClick} disabled={isViewer}>
           Export To
         </Button>
         <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
@@ -295,7 +339,17 @@ const SearchPageUtility = () => {
               </TableHead>
               <TableBody>
                 {paginatedPosts.map((data) => (
-                  <TableRow key={data.contact_Id} style={{ cursor: "pointer" }}>
+                  <TableRow
+                    key={data.contact_Id}
+                    style={{
+                      cursor: "pointer",
+                      backgroundColor:
+                        data.contact_Id === selectedRecord?.contact_Id
+                          ? "#f0f0f0"
+                          : "inherit", // Highlight selected row
+                    }}
+                    onDoubleClick={() => handleRowClick(data.contact_Id)}
+                  >
                     <TableCell>{data.org_name || ""}</TableCell>
                     <TableCell>{data.org_holder_name || ""}</TableCell>
                     <TableCell>{data.designation || ""}</TableCell>

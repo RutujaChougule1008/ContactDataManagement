@@ -150,7 +150,7 @@ const Sidebar = () => {
                 justifyContent: 'center',
                 alignItems: 'center'
               }}>
-                <h4 style={{ display: 'inline-block' }}>Jhon&nbsp;Doe</h4>
+                <h4 style={{ display: 'inline-block' }}></h4>
                 <a href="/" style={{
                   fontSize: '0.8rem',
                   textDecoration: 'none',
@@ -159,7 +159,7 @@ const Sidebar = () => {
                     textDecoration: 'underline'
                   }
                 }}>
-                  view&nbsp;profile
+                  
                 </a>
               </div>
               <button

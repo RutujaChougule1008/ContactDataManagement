@@ -364,8 +364,10 @@ const UserCreationComponent = () => {
               onChange={handleInputChange}
               disabled={!isEditing}
             >
-              <option value="U">User</option>
+              
               <option value="A">Admin</option>
+              <option value="E">Editor</option>
+              <option value="V">Viewer</option>
             </select>
           </div>
         </form>

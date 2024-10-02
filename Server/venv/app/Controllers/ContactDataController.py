@@ -401,6 +401,11 @@ def get_nextcontact_navigation():
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
     
 
+from flask import jsonify, request
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text
+import traceback
+
 @app.route(API_URL + "/contact_data", methods=['GET'])
 def get_contact_data():
     try:
@@ -414,22 +419,27 @@ def get_contact_data():
         # Convert the comma-separated string into a list of integers
         event_codes = [int(code) for code in event_codes_str.split(',')]
 
+        # Number of event codes provided
+        number_of_event_codes = len(event_codes)
+
         # Example of how to use event_codes in a SQL query
         query = text("""
             SELECT h.org_name, h.contact_Id, h.org_holder_name, h.city, h.designation, h.state, h.country, h.mobile_no, h.email, h.website, h.anniversary, h.DOB
-FROM     dbo.Contact_Data_Bank_Head AS h LEFT OUTER JOIN
-                  dbo.Contact_Data_Bank_Detail AS d ON h.contact_Id = d.contact_Id LEFT OUTER JOIN
-                  dbo.EventGroup AS e ON d.eventCode = e.eventCode
-            WHERE e.eventCode IN :eventCodes 
-            group by  h.org_name, h.contact_Id, h.org_holder_name, h.city, h.designation, h.state, h.country, h.mobile_no, h.email, h.website, h.anniversary, h.DOB order by h.org_name
-                          
+            FROM dbo.Contact_Data_Bank_Head AS h
+            LEFT OUTER JOIN dbo.Contact_Data_Bank_Detail AS d ON h.contact_Id = d.contact_Id
+            LEFT OUTER JOIN dbo.EventGroup AS e ON d.eventCode = e.eventCode
+            WHERE e.eventCode IN :eventCodes
+            GROUP BY h.org_name, h.contact_Id, h.org_holder_name, h.city, h.designation, h.state, h.country, h.mobile_no, h.email, h.website, h.anniversary, h.DOB
+            HAVING COUNT(DISTINCT e.eventCode) = :number_of_event_codes
+            ORDER BY h.org_name
         """)
 
         result = db.session.execute(query, {
-            'eventCodes': tuple(event_codes),  
+            'eventCodes': tuple(event_codes),  # Use tuple to pass multiple values
+            'number_of_event_codes': number_of_event_codes
         })
 
-        
+        # Construct the response as a list of dictionaries
         contact_data = [
             {
                 'org_name': row.org_name,
@@ -457,9 +467,6 @@ FROM     dbo.Contact_Data_Bank_Head AS h LEFT OUTER JOIN
 
     except Exception as e:
         return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
-    except Exception as e:
-        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
-    
 
 
 @app.route(API_URL + "/get-organization-names", methods=["GET"])

@@ -1,19 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
 import logo from "../../../Assets/jklogo.png";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
-import './Login.css';
-import { useNavigate } from 'react-router-dom';
-import { toast, ToastContainer } from 'react-toastify';
+import "./Login.css";
+import { useNavigate } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
 
-const apikey = process.env.REACT_PYTHON_API_URL
+const apikey = process.env.REACT_PYTHON_API_URL;
 
 const LoginPage = () => {
   const usernameRef = useRef(null);
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    username: '',
-    password: '',
+    username: "",
+    password: "",
     showPassword: false,
   });
 
@@ -42,38 +42,35 @@ const LoginPage = () => {
 
     try {
       // Make the API request with axios
-      const response = await axios.post(`http://localhost:8080/api/eBuySugar/loginuser`, {
-        User_Name: username,
-        User_Password: password,
-      });
+      const response = await axios.post(
+        `http://localhost:8080/api/eBuySugar/loginuser`,
+        {
+          User_Name: username,
+          User_Password: password,
+        }
+      );
 
       const data = response.data;
 
-
       if (response.status === 200) {
-        toast.success("Successfully Logged In....")
-        sessionStorage.setItem('access_token', data.token);
-        sessionStorage.setItem('user_type', data.user_type);
+        toast.success("Successfully Logged In....");
+        sessionStorage.setItem("access_token", data.token);
+        sessionStorage.setItem("user_type", data.user_type);
         navigate("/home");
       } else {
-
-        toast.error(data.error || 'Login failed');
+        toast.error(data.error || "Login failed");
       }
     } catch (error) {
-      console.error('Error:', error);
-      toast.error("Invalid Credentials...")
+      console.error("Error:", error);
+      toast.error("Invalid Credentials...");
     }
   };
 
   return (
     <div className="login-container">
-      <ToastContainer/>
+      <ToastContainer />
       <div className="login-content">
-        <img
-          src={logo}
-          alt="JK Sugars & Commodities Logo"
-          className="logo"
-        />
+        <img src={logo} alt="JK Sugars & Commodities Logo" className="logo" />
         <h3>JK Sugars & Commodities</h3>
         <form className="login-form" onSubmit={handleSubmit}>
           <label htmlFor="username">Username</label>
@@ -91,7 +88,7 @@ const LoginPage = () => {
           <label htmlFor="password">Password</label>
           <div className="password-field">
             <input
-              type={formData.showPassword ? 'text' : 'password'}
+              type={formData.showPassword ? "text" : "password"}
               id="password"
               name="password"
               value={formData.password}
@@ -99,10 +96,7 @@ const LoginPage = () => {
               placeholder="Enter your password"
               required
             />
-            <i
-              className="password-toggle-icon"
-              onClick={handleTogglePassword}
-            >
+            <i className="password-toggle-icon" onClick={handleTogglePassword}>
               {formData.showPassword ? (
                 <AiOutlineEye size={24} />
               ) : (
@@ -111,7 +105,9 @@ const LoginPage = () => {
             </i>
           </div>
 
-          <button type="submit" className="submit-button">Sign In</button>
+          <button type="submit" className="submit-button">
+            Sign In
+          </button>
         </form>
       </div>
     </div>

@@ -26,6 +26,9 @@ import { useContacts } from "./ContactContext";
 const API_URL = process.env.REACT_APP_API_URL;
 
 function ContactDataDocUtility() {
+  const userRole = sessionStorage.getItem("user_type");
+  const isViewer = userRole === "V";
+
   const [fetchedData, setFetchedData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [perPage, setPerPage] = useState(15);
@@ -99,6 +102,7 @@ function ContactDataDocUtility() {
 
   const handleSearchTermChange = (event) => {
     setSearchTerm(event.target.value);
+    localStorage.setItem("contactSearchTerm", event.target.value);
   };
 
   const pageCount = Math.ceil(filteredData.length / perPage);
@@ -119,6 +123,7 @@ function ContactDataDocUtility() {
   };
 
   const handleBack = () => {
+    localStorage.removeItem("contactSearchTerm");
     navigate("/home");
   };
 
@@ -161,12 +166,19 @@ function ContactDataDocUtility() {
       first: firstContactData,
       second: secondContactData,
     });
-    setSearchTerm("")
+    setSearchTerm("");
   };
 
   const handleClosePopup = () => {
     setShowContactDataPopUp(false);
   };
+
+  useEffect(() => {
+    const savedSearchTerm = localStorage.getItem("contactSearchTerm");
+    if (savedSearchTerm) {
+      setSearchTerm(savedSearchTerm);
+    }
+  }, []);
 
   return (
     <div
@@ -195,6 +207,7 @@ function ContactDataDocUtility() {
             variant="contained"
             color="primary"
             onClick={() => navigate("/contactData")}
+            disabled={isViewer}
           >
             Add
           </Button>
@@ -252,7 +265,7 @@ function ContactDataDocUtility() {
                     <div className="city-master-popup-wrapper">
                       <ContactDataDoc
                         ContactIds={[selectedContacts[1]]}
-                       closePopup={handleClosePopup}
+                        closePopup={handleClosePopup}
                       />
                     </div>
                   </div>
@@ -291,32 +304,33 @@ function ContactDataDocUtility() {
             </TableRow>
           </TableHead>
           <TableBody>
-          {paginatedPosts.map((post) => {
-    // Check for duplicates in filteredData based on org_name and org_holder_name
-    const isDuplicate = filteredData.filter(
-      (item) =>
-        item.org_name === post.org_name && 
-        item.org_holder_name === post.org_holder_name
-    ).length > 1; // Check if there is more than one record
+            {paginatedPosts.map((post) => {
+              // Check for duplicates in filteredData based on org_name and org_holder_name
+              const isDuplicate =
+                filteredData.filter(
+                  (item) =>
+                    item.org_name === post.org_name &&
+                    item.org_holder_name === post.org_holder_name
+                ).length > 1; // Check if there is more than one record
 
-    const isSelected = selectedContacts.includes(post.contact_Id);
+              const isSelected = selectedContacts.includes(post.contact_Id);
 
-    // Show checkbox only if there is a duplicate
-    const showCheckbox = isDuplicate;
+              // Show checkbox only if there is a duplicate
+              const showCheckbox = isDuplicate;
 
-    return (
-      <TableRow
-        key={post.contact_Id}
-        style={{ cursor: "pointer" }}
-        onDoubleClick={() => handleRowClick(post.contact_Id)}
-      >
-        <TableCell>
-          {showCheckbox && (
-            <Checkbox
-              checked={isSelected}
-              onChange={() => handleCheckboxChange(post.contact_Id)}
-            />
-          )}
+              return (
+                <TableRow
+                  key={post.contact_Id}
+                  style={{ cursor: "pointer" }}
+                  onDoubleClick={() => handleRowClick(post.contact_Id)}
+                >
+                  <TableCell>
+                    {showCheckbox && (
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={() => handleCheckboxChange(post.contact_Id)}
+                      />
+                    )}
                   </TableCell>
                   <TableCell>{post.org_name || ""}</TableCell>
                   <TableCell>{post.org_holder_name || ""}</TableCell>

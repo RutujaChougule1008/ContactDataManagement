@@ -16,24 +16,27 @@ const API_URL = process.env.REACT_APP_API_URL;
 var newAccoid;
 var newDetailId;
 
-const ContactData = ({ ContactIds, closePopup  }) => {
+const ContactData = ({ ContactIds, closePopup }) => {
   const { selectedContacts } = useContacts(); // Access the selected contacts from context
 
   // If you still want to use ContactIds prop, you can combine it with selectedContacts
   const contactIdsToUse = ContactIds || selectedContacts;
 
-  const [updateButtonClicked, setUpdateButtonClicked] = useState(false);
+  const userRole = sessionStorage.getItem("user_type"); // Retrieve user role
+  const isViewer = userRole === "V";
+
+  const [updateButtonClicked, setUpdateButtonClicked] = useState(!isViewer);
   const [saveButtonClicked, setSaveButtonClicked] = useState(false);
-  const [addOneButtonEnabled, setAddOneButtonEnabled] = useState(false);
-  const [saveButtonEnabled, setSaveButtonEnabled] = useState(true);
+  const [addOneButtonEnabled, setAddOneButtonEnabled] = useState(true);
+  const [saveButtonEnabled, setSaveButtonEnabled] = useState(!isViewer);
   const [cancelButtonEnabled, setCancelButtonEnabled] = useState(true);
   const [editButtonEnabled, setEditButtonEnabled] = useState(false);
   const [deleteButtonEnabled, setDeleteButtonEnabled] = useState(false);
   const [backButtonEnabled, setBackButtonEnabled] = useState(true);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(!isViewer);
   const [highlightedButton, setHighlightedButton] = useState(null);
   const [cancelButtonClicked, setCancelButtonClicked] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(!isViewer);
   const companyCode = sessionStorage.getItem("Company_Code");
   const [accountData, setAccountData] = useState({});
   const [accountDetail, setAccountDetail] = useState([]);
@@ -69,7 +72,7 @@ const ContactData = ({ ContactIds, closePopup  }) => {
     DOB: "",
     mobile_no2: "",
     email2: "",
-    note:"",
+    note: "",
   };
 
   const orgNameRef = useRef(null);
@@ -114,6 +117,7 @@ const ContactData = ({ ContactIds, closePopup  }) => {
   console.log("SelectedGroup", selectedGroups);
 
   const handleAddOne = () => {
+    if (isViewer) return;
     setAddOneButtonEnabled(false);
     setSaveButtonEnabled(true);
     setCancelButtonEnabled(true);
@@ -187,6 +191,12 @@ const ContactData = ({ ContactIds, closePopup  }) => {
       setIsLoading(false);
 
       window.location.reload();
+      navigate("/searchPageUtility", {
+        state: {
+          selectedRecord: { ...master_data, contact_Id: newAccoid }, // Pass the updated record
+          operation: isEditMode ? "update" : "save", // You can pass operation type if needed
+        },
+      });
     } catch (error) {
       console.error("Error during API call:", error);
       toast.error(`Error occurred while saving data: ${error.message}`);
@@ -195,6 +205,7 @@ const ContactData = ({ ContactIds, closePopup  }) => {
   };
 
   const handleEdit = () => {
+    if (isViewer) return;
     setIsEditMode(true);
     setAddOneButtonEnabled(false);
     setSaveButtonEnabled(true);
@@ -264,6 +275,7 @@ const ContactData = ({ ContactIds, closePopup  }) => {
   };
 
   const handleDelete = async () => {
+    if (isViewer) return;
     const isConfirmed = window.confirm(
       `Are you sure you want to delete this record ${newAccoid}?`
     );
@@ -284,7 +296,6 @@ const ContactData = ({ ContactIds, closePopup  }) => {
         handleCancel();
         closePopup();
       } catch (error) {
-        toast.error("Deletion cancelled");
         console.error("Error during API call:", error);
       }
     } else {
@@ -336,15 +347,15 @@ const ContactData = ({ ContactIds, closePopup  }) => {
       console.error("Error fetching data:", error);
     }
 
-    setIsEditMode(false);
+    setIsEditMode(!isViewer ? true : false);
     setAddOneButtonEnabled(true);
-    setEditButtonEnabled(true);
+    setEditButtonEnabled(false);
     setDeleteButtonEnabled(true);
     setBackButtonEnabled(true);
     setSaveButtonEnabled(false);
-    setCancelButtonEnabled(false);
-    setUpdateButtonClicked(true);
-    setIsEditing(false);
+    setCancelButtonEnabled(!isViewer ? false : true);
+    setUpdateButtonClicked(!isViewer ? true : false);
+    setIsEditing(!isViewer ? true : false);
   };
 
   useEffect(() => {
@@ -500,7 +511,7 @@ const ContactData = ({ ContactIds, closePopup  }) => {
       );
       const data = response.data.account_master_data;
       const detailData = response.data.account_detail_data || [];
-      newAccoid = response.data.account_master_data.contact_Id
+      newAccoid = response.data.account_master_data.contact_Id;
 
       setFormData((prev) => ({
         ...prev,
@@ -544,7 +555,6 @@ const ContactData = ({ ContactIds, closePopup  }) => {
     }
   }, [contactIdsToUse]);
 
-  
   return (
     <>
       <ToastContainer />

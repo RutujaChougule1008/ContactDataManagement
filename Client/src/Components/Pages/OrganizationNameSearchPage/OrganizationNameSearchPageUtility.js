@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -25,6 +25,8 @@ import "jspdf-autotable";
 const API_URL = process.env.REACT_APP_API_URL;
 
 const OrganizationNameSearchPageUtility = () => {
+  const userRole = sessionStorage.getItem("user_type");
+  const isViewer = userRole === "V";
   const [contactData, setContactData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -33,6 +35,7 @@ const OrganizationNameSearchPageUtility = () => {
   const [perPage, setPerPage] = useState(15);
   const [currentPage, setCurrentPage] = useState(1);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Get selected organization names from location state
   const { orgNames, selectedOrgNames } = location.state || {};
@@ -54,11 +57,11 @@ const OrganizationNameSearchPageUtility = () => {
     setError("");
 
     try {
-        const response = await axios.get(`${API_URL}/contact_data_by_orgname`, {
-          params: {
-            org_names: selectedOrgNames.join(','),  
-          }
-        });
+      const response = await axios.get(`${API_URL}/contact_data_by_orgname`, {
+        params: {
+          org_names: selectedOrgNames.join(","),
+        },
+      });
 
       setContactData(response.data);
       setFilteredData(response.data);
@@ -128,18 +131,21 @@ const OrganizationNameSearchPageUtility = () => {
   const exportToPDF = () => {
     const doc = new jsPDF("landscape");
 
+    // Sanitize the event names to remove special characters except spaces
+    const sanitizedEventNames =
+      selectedOrgNames && selectedOrgNames.length > 0
+        ? selectedOrgNames.join(" ").replace(/[^\w\s]/g, "")
+        : "Client Connect Report";
+
     const tableColumn = [
       "Organization Name",
-      "Owner Name",
+      "Name",
       "Designation",
       "City",
       "State",
       "Country",
       "Mobile No",
       "Email",
-      "Website",
-      "Anniversary",
-      "DOB",
     ];
 
     const tableRows = filteredData.map((data) => [
@@ -149,41 +155,36 @@ const OrganizationNameSearchPageUtility = () => {
       data.city || "",
       data.state || "",
       data.country || "",
-      data.mobile_no || "",
-      data.email || "",
-      data.website || "",
-      data.anniversary || "",
-      data.DOB || "",
+      formatMultipleValues(data.mobile_no) || "",
+      formatMultipleValues(data.email) || "",
     ]);
 
-    doc.text(
-      selectedOrgNames && selectedOrgNames.length > 0
-        ? `Report for: ${selectedOrgNames.join(", ")}`
-        : "Contact Data Search",
-      14,
-      10
-    );
+    doc.setFontSize(12);
+    const titleText = sanitizedEventNames;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const textWidth = doc.getTextWidth(titleText);
+    doc.text(titleText, (pageWidth - textWidth) / 2, 20); // Centering title
 
+    // Add the table after the title with more space from the top
     doc.autoTable({
       head: [tableColumn],
       body: tableRows,
-      startY: 20,
-      margin: { top: 20, bottom: 10, left: 10, right: 10 },
+      startY: 25, // More space from the top
+      margin: { top: 40, bottom: 10, left: 10, right: 10 },
       styles: { fontSize: 8, overflow: "linebreak", cellPadding: 2 },
       columnStyles: {
-        0: { cellWidth: 30 },
-        1: { cellWidth: 30 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 20 },
-        4: { cellWidth: 20 },
-        5: { cellWidth: 20 },
-        6: { cellWidth: 25 },
-        7: { cellWidth: 35 },
-        8: { cellWidth: 35 },
-        9: { cellWidth: 25 },
-        10: { cellWidth: 25 },
+        0: { cellWidth: 40 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 30 },
+        5: { cellWidth: 30 },
+        6: { cellWidth: 35 },
+        7: { cellWidth: 45 },
       },
       didDrawPage: function (data) {
+        // Add small-sized page numbers
+        doc.setFontSize(8);
         doc.text(
           `Page ${data.pageNumber}`,
           data.settings.margin.left,
@@ -192,11 +193,23 @@ const OrganizationNameSearchPageUtility = () => {
       },
     });
 
-    doc.save(
-      selectedOrgNames && selectedOrgNames.length > 0
-        ? `Report for: ${selectedOrgNames.join(", ")}`
-        : "Contact Data Search.pdf"
+    // Save the file with a sanitized title
+    doc.save(sanitizedEventNames + ".pdf");
+  };
+
+  // Helper function to format multiple values in one cell (for mobile numbers or emails)
+  const formatMultipleValues = (value) => {
+    if (!value) return "";
+    // Check if the value contains multiple entries (comma-separated or space-separated)
+    const values = value.split(/[, ]+/);
+    return values.join("\n"); // Join with a newline to place values one below another
+  };
+
+  const handleRowClick = (contact_Id) => {
+    const selectedRecord = filteredData.find(
+      (record) => record.contact_Id === contact_Id
     );
+    navigate("/contactData", { state: { selectedRecord } });
   };
 
   return (
@@ -224,7 +237,7 @@ const OrganizationNameSearchPageUtility = () => {
       )}
 
       <Grid container justifyContent="flex-end" sx={{ marginBottom: 2 }}>
-        <Button variant="contained" onClick={handleClick}>
+        <Button variant="contained" onClick={handleClick} disabled={isViewer}>
           Export To
         </Button>
         <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
@@ -296,7 +309,11 @@ const OrganizationNameSearchPageUtility = () => {
               </TableHead>
               <TableBody>
                 {paginatedPosts.map((data) => (
-                  <TableRow key={data.contact_Id} style={{ cursor: "pointer" }}>
+                  <TableRow
+                    key={data.contact_Id}
+                    style={{ cursor: "pointer" }}
+                    onDoubleClick={() => handleRowClick(data.contact_Id)}
+                  >
                     <TableCell>{data.org_name || ""}</TableCell>
                     <TableCell>{data.org_holder_name || ""}</TableCell>
                     <TableCell>{data.designation || ""}</TableCell>
