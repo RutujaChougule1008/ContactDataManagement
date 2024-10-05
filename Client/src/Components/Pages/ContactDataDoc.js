@@ -123,6 +123,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
     setCancelButtonEnabled(true);
     setEditButtonEnabled(false);
     setDeleteButtonEnabled(false);
+    setIsEditMode(false);
     setIsEditing(true);
     setFormData(initialFormData);
     setAccountDetail([]);
@@ -172,12 +173,21 @@ const ContactData = ({ ContactIds, closePopup }) => {
         const updateApiUrl = `${API_URL}/update-contactData?contact_Id=${newAccoid}`;
         response = await axios.put(updateApiUrl, requestData);
         toast.success("Data updated successfully!");
+        navigate("/documents", {
+          state: {
+            selectedRecord: { ...master_data, contact_Id: newAccoid }, // Pass the updated record
+            operation: isEditMode ? "update" : "save", // You can pass operation type if needed
+          },
+        });
       } else {
         response = await axios.post(
           `${API_URL}/insert-contactData`,
           requestData
         );
         toast.success("Data saved successfully!");
+        setTimeout(() => {
+          window.location.reload();
+      }, 1000)
       }
 
       setIsEditMode(false);
@@ -189,14 +199,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
       setCancelButtonEnabled(false);
       setIsEditing(false);
       setIsLoading(false);
-
-      window.location.reload();
-      navigate("/searchPageUtility", {
-        state: {
-          selectedRecord: { ...master_data, contact_Id: newAccoid }, // Pass the updated record
-          operation: isEditMode ? "update" : "save", // You can pass operation type if needed
-        },
-      });
+      
     } catch (error) {
       console.error("Error during API call:", error);
       toast.error(`Error occurred while saving data: ${error.message}`);
@@ -348,7 +351,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
     }
 
     setIsEditMode(!isViewer ? true : false);
-    setAddOneButtonEnabled(true);
+    setAddOneButtonEnabled(false);
     setEditButtonEnabled(false);
     setDeleteButtonEnabled(true);
     setBackButtonEnabled(true);
@@ -359,12 +362,16 @@ const ContactData = ({ ContactIds, closePopup }) => {
   };
 
   useEffect(() => {
-    if (selectedRecord) {
-      handlerecordDoubleClicked();
-    } else {
-      handleAddOne();
-    }
-  }, [selectedRecord]);
+  if (selectedRecord) {
+    handlerecordDoubleClicked(); 
+  }
+    else{
+    handleAddOne(); 
+  }
+
+}, [selectedRecord]);
+
+  
 
   //Navigation Buttons
   const handleFirstButtonClick = async () => {

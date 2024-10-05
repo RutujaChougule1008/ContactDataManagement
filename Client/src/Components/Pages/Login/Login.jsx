@@ -43,7 +43,7 @@ const LoginPage = () => {
     try {
       // Make the API request with axios
       const response = await axios.post(
-        `http://localhost:8080/api/eBuySugar/loginuser`,
+        `http://45.119.45.228:71/api/eBuySugar/loginuser`,
         {
           User_Name: username,
           User_Password: password,

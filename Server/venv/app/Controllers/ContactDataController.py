@@ -53,7 +53,7 @@ def get_contactData():
     try:
 
         query = ('''SELECT  h.org_name, h.designation, h.org_holder_name, h.city, h.state, h.country, h.mobile_no, h.email, h.website, h.mobile_no2, h.email2 , h.contact_Id, ISNULL(eventCodeCountTable.eventCodeCount, 0) AS eventCodeCount
-                 ,h.anniversary, h.DOB
+                 ,h.anniversary, h.DOB, h.note,  h.office_address, h.residential_addr, h.landline_no
 FROM     dbo.Contact_Data_Bank_Head AS h LEFT OUTER JOIN
                       (SELECT contact_Id, COUNT(eventCode) AS eventCodeCount
                        FROM      dbo.Contact_Data_Bank_Detail
@@ -401,10 +401,7 @@ def get_nextcontact_navigation():
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
     
 
-from flask import jsonify, request
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import text
-import traceback
+
 
 @app.route(API_URL + "/contact_data", methods=['GET'])
 def get_contact_data():
