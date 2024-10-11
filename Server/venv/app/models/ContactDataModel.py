@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, Date, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, Date, Boolean, ForeignKey, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from app import db
@@ -24,6 +24,14 @@ class ContactDataBankHead(db.Model):
     mobile_no2 = Column(String(255), nullable=True)
     email2 = Column(String(255), nullable=True)
     note = Column(String(max), nullable=True)
+    bio = Column(String(max), nullable=True)
+    profile1 = Column(LargeBinary)
+    profile2 = Column(LargeBinary)
+    profile3 = Column(LargeBinary)
+    profile1FileName=Column(String(255), nullable=True)
+    profile2FileName=Column(String(255), nullable=True)
+    profile3FileName=Column(String(255), nullable=True)
+
 
 
 class ContactDataBankDetail(db.Model):
@@ -35,6 +43,17 @@ class ContactDataBankDetail(db.Model):
 
     
     details = relationship('ContactDataBankHead', backref='contact_data_bank_details', lazy=True)
+
+class ContactSpecialDates(db.Model):
+    __tablename__ = 'ContactSpecialDates'
+    
+    date_id = Column(Integer, primary_key=True)
+    contact_Id = Column(Integer, ForeignKey('Contact_Data_Bank_Head.contact_Id'), nullable=False)
+    special_date = Column(Date, nullable=True)
+    description = db.Column(db.String(255), nullable=True)
+    
+    contact = db.relationship('ContactDataBankHead', backref=db.backref('special_dates', lazy=True))
+
 
 
 

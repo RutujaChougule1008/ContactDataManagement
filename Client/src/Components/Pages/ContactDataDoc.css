@@ -203,4 +203,39 @@ h2 {
     text-decoration: none;
     cursor: pointer;
   }
+  .profile-image-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 20px auto; /* centers the container and adds vertical margin */
+    width: 120px; /* fixed width for the container */
+  }
+  
+  .profile-image-container img {
+    width: 100px; /* image width */
+    height: 100px; /* image height to make it circular */
+    border-radius: 50%; /* this makes the image circular */
+    object-fit: cover; /* ensures the image covers the space without distortion */
+    border: 2px solid #ddd; /* optional: adds a subtle border around the image */
+  }
+  
+  .profile-image-container p {
+    margin-top: 8px; /* space between the image and the filename */
+    color: #666; /* text color */
+    font-size: 14px; /* appropriate text size */
+    text-align: center; /* centers the text below the image */
+  }
+
+  .special-notification {
+    margin: 10px 0;
+    padding: 10px;
+    background-color: #f0f8ff;
+    border-left: 5px solid #007bff;
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+  }
+  
   

@@ -51,6 +51,16 @@ const ContactData = ({ ContactIds, closePopup }) => {
   const [contactData, setContactData] = useState(null);
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null); // Error state
+  const [imageData, setImageData] = useState({
+    profile1: "",
+    profile2: "",
+    profile3: "",
+  });
+  const [isBirthdayToday, setIsBirthdayToday] = useState(false);
+  const [isAnniversaryToday, setIsAnniversaryToday] = useState(false);
+  const [specialDates, setSpecialDates] = useState([
+    { date: "", description: "" },
+  ]);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -73,6 +83,13 @@ const ContactData = ({ ContactIds, closePopup }) => {
     mobile_no2: "",
     email2: "",
     note: "",
+    bio: "",
+    profile1: null,
+    profile2: null,
+    profile3: null,
+    profile1FileName: "",
+    profile2FileName: "",
+    profile3FileName: "",
   };
 
   const orgNameRef = useRef(null);
@@ -89,11 +106,24 @@ const ContactData = ({ ContactIds, closePopup }) => {
   });
   // Handle change for all inputs
   const handleChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((prevState) => {
-      const updatedFormData = { ...prevState, [name]: value };
-      return updatedFormData;
-    });
+    const { name, value, files } = event.target;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prevData) => ({
+          ...prevData,
+          [name]: reader.result, // Store base64 string of the image
+          [`${name}FileName`]: file.name, // Store the filename in a separate field
+        }));
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFormData((prevData) => ({
+        ...prevData,
+        [name]: value,
+      }));
+    }
   };
 
   const handleCheckboxAcGroups = (e, group) => {
@@ -116,6 +146,52 @@ const ContactData = ({ ContactIds, closePopup }) => {
 
   console.log("SelectedGroup", selectedGroups);
 
+  const checkSpecialDates = () => {
+    const today = new Date();
+    const todayFormatted = `${today.getMonth() + 1}-${today.getDate()}`;
+
+    // Check for Birthday
+    if (formData.DOB) {
+      const birthday = new Date(formData.DOB);
+      const birthdayFormatted = `${
+        birthday.getMonth() + 1
+      }-${birthday.getDate()}`;
+      if (birthdayFormatted === todayFormatted) {
+        setIsBirthdayToday(true);
+      } else {
+        setIsBirthdayToday(false);
+      }
+    }
+
+    // Check for Anniversary
+    if (formData.anniversary) {
+      const anniversary = new Date(formData.anniversary);
+      const anniversaryFormatted = `${
+        anniversary.getMonth() + 1
+      }-${anniversary.getDate()}`;
+      if (anniversaryFormatted === todayFormatted) {
+        setIsAnniversaryToday(true);
+      } else {
+        setIsAnniversaryToday(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    checkSpecialDates();
+  }, [formData.DOB, formData.anniversary]);
+
+  const handleSpecialDateChange = (index, field, value) => {
+    const updatedSpecialDates = [...specialDates];
+    updatedSpecialDates[index][field] = value;
+    setSpecialDates(updatedSpecialDates);
+  };
+
+  // Add new special date fields
+  const handleAddSpecialDate = () => {
+    setSpecialDates([...specialDates, { date: "", description: "" }]);
+  };
+
   const handleAddOne = () => {
     if (isViewer) return;
     setAddOneButtonEnabled(false);
@@ -128,19 +204,23 @@ const ContactData = ({ ContactIds, closePopup }) => {
     setFormData(initialFormData);
     setAccountDetail([]);
     setSelectedGroups([]);
+    setImageData({});
+    setIsBirthdayToday(false);
+    setIsAnniversaryToday(false);
   };
 
   const handleSaveOrUpdate = async () => {
     setIsEditing(true);
     setIsLoading(true);
 
-    const master_data = { ...formData };
+    // Create a new FormData object to handle multipart data
+    const formDataToSend = new FormData();
 
-    if (isEditMode) {
-      delete master_data.contact_Id;
-    }
+    // Append the master_data as a JSON string
+    formDataToSend.append("master_data", JSON.stringify(formData));
 
-    const contact_data = Array.from(selectedGroups).map((groupCode) => {
+    // Append the contact_data as a JSON string
+    const contactDataArray = Array.from(selectedGroups).map((groupCode) => {
       const detail = accountDetail.find((d) => d.eventCode === groupCode);
       return {
         eventCode: [groupCode],
@@ -149,64 +229,53 @@ const ContactData = ({ ContactIds, closePopup }) => {
       };
     });
 
-    if (isEditMode) {
-      const deselectedGroups = accountDetail
-        .filter((detail) => !selectedGroups.includes(detail.eventCode))
-        .map((detail) => ({
-          eventCode: [detail.eventCode],
-          rowaction: "delete",
-          contactdetail_id: detail.contactdetail_id,
-        }));
+    formDataToSend.append("special_dates", JSON.stringify(specialDates));
 
-      contact_data.push(...deselectedGroups);
-    }
+    formDataToSend.append("contact_data", JSON.stringify(contactDataArray));
 
-    const requestData = {
-      master_data,
-      contact_data,
-    };
+    // Append the binary files (profile images) if they exist
+    if (formData.profile1) formDataToSend.append("profile1", formData.profile1);
+    if (formData.profile2) formDataToSend.append("profile2", formData.profile2);
+    if (formData.profile3) formDataToSend.append("profile3", formData.profile3);
 
     try {
       let response;
 
       if (isEditMode) {
+        delete formData.contact_Id;
         const updateApiUrl = `${API_URL}/update-contactData?contact_Id=${newAccoid}`;
-        response = await axios.put(updateApiUrl, requestData);
-        toast.success("Data updated successfully!");
-        navigate("/documents", {
-          state: {
-            selectedRecord: { ...master_data, contact_Id: newAccoid }, // Pass the updated record
-            operation: isEditMode ? "update" : "save", // You can pass operation type if needed
+        response = await axios.put(updateApiUrl, formDataToSend, {
+          headers: {
+            "Content-Type": "multipart/form-data", // Ensure the correct content type is set
           },
         });
+        toast.success("Data updated successfully!");
       } else {
         response = await axios.post(
           `${API_URL}/insert-contactData`,
-          requestData
+          formDataToSend,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data", // Ensure the correct content type is set
+            },
+          }
         );
         toast.success("Data saved successfully!");
-        setTimeout(() => {
-          window.location.reload();
-      }, 1000)
       }
 
-      setIsEditMode(false);
-      setAddOneButtonEnabled(true);
-      setEditButtonEnabled(true);
-      setDeleteButtonEnabled(true);
-      setBackButtonEnabled(true);
-      setSaveButtonEnabled(false);
-      setCancelButtonEnabled(false);
+      // Handle the response or refresh the page
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+
       setIsEditing(false);
       setIsLoading(false);
-      
     } catch (error) {
       console.error("Error during API call:", error);
       toast.error(`Error occurred while saving data: ${error.message}`);
       setIsLoading(false);
     }
   };
-
   const handleEdit = () => {
     if (isViewer) return;
     setIsEditMode(true);
@@ -224,6 +293,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
       .then((response) => {
         const data = response.data.account_master_data;
         const detailData = response.data.account_detail_data || [];
+        const specialDatesData = response.data.special_date || [];
 
         newAccoid = data.contact_Id;
 
@@ -236,6 +306,15 @@ const ContactData = ({ ContactIds, closePopup }) => {
         setFormData({
           ...formData,
           ...data,
+          profile1: data.profile1
+            ? `data:image/jpeg;base64,${data.profile1}`
+            : null,
+          profile2: data.profile2
+            ? `data:image/jpeg;base64,${data.profile2}`
+            : null,
+          profile3: data.profile3
+            ? `data:image/jpeg;base64,${data.profile3}`
+            : null,
         });
 
         setAccountData(data || {});
@@ -248,6 +327,11 @@ const ContactData = ({ ContactIds, closePopup }) => {
           .filter((eventCode) => eventCode !== null && eventCode !== undefined);
 
         setSelectedGroups(eventCodes || []);
+        const formattedSpecialDates = specialDatesData.map((specialDate) => ({
+          date: specialDate.special_date || "",
+          description: specialDate.description || "",
+        }));
+        setSpecialDates(formattedSpecialDates);
       })
       .catch((error) => {
         console.error("Error fetching latest data for edit:", error);
@@ -322,6 +406,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
       );
       const data = response.data.account_master_data;
       const detailData = response.data.account_detail_data || [];
+      const specialDatesData = response.data.special_date || [];
 
       newAccoid = data.contact_Id;
 
@@ -334,6 +419,15 @@ const ContactData = ({ ContactIds, closePopup }) => {
       setFormData({
         ...formData,
         ...data,
+        profile1: data.profile1
+          ? `data:image/jpeg;base64,${data.profile1}`
+          : null,
+        profile2: data.profile2
+          ? `data:image/jpeg;base64,${data.profile2}`
+          : null,
+        profile3: data.profile3
+          ? `data:image/jpeg;base64,${data.profile3}`
+          : null,
       });
 
       setAccountData(data || {});
@@ -346,6 +440,12 @@ const ContactData = ({ ContactIds, closePopup }) => {
         .filter((eventCode) => eventCode !== null && eventCode !== undefined);
 
       setSelectedGroups(eventCodes || []);
+      setSelectedGroups(eventCodes || []);
+      const formattedSpecialDates = specialDatesData.map((specialDate) => ({
+        date: specialDate.special_date || "",
+        description: specialDate.description || "",
+      }));
+      setSpecialDates(formattedSpecialDates);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -362,16 +462,12 @@ const ContactData = ({ ContactIds, closePopup }) => {
   };
 
   useEffect(() => {
-  if (selectedRecord) {
-    handlerecordDoubleClicked(); 
-  }
-    else{
-    handleAddOne(); 
-  }
-
-}, [selectedRecord]);
-
-  
+    if (selectedRecord) {
+      handlerecordDoubleClicked();
+    } else {
+      handleAddOne();
+    }
+  }, [selectedRecord]);
 
   //Navigation Buttons
   const handleFirstButtonClick = async () => {
@@ -382,6 +478,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
 
         const accountMasterData = data.account_master_data;
         const detailData = data.account_detail_data || [];
+        const specialDatesData = data.special_date || [];
 
         newAccoid = accountMasterData.contact_Id;
         newDetailId =
@@ -395,6 +492,15 @@ const ContactData = ({ ContactIds, closePopup }) => {
         setFormData((prevFormData) => ({
           ...prevFormData,
           ...accountMasterData,
+          profile1: data.accountMasterData
+            ? `data:image/jpeg;base64,${data.profile1}`
+            : null,
+          profile2: data.accountMasterData
+            ? `data:image/jpeg;base64,${data.profile2}`
+            : null,
+          profile3: data.accountMasterData
+            ? `data:image/jpeg;base64,${data.profile3}`
+            : null,
         }));
 
         setAccountData(accountMasterData || {});
@@ -406,6 +512,11 @@ const ContactData = ({ ContactIds, closePopup }) => {
           .filter((eventCode) => eventCode !== null && eventCode !== undefined);
 
         setSelectedGroups(eventCodes || []);
+        const formattedSpecialDates = specialDatesData.map((specialDate) => ({
+          date: specialDate.special_date || "",
+          description: specialDate.description || "",
+        }));
+        setSpecialDates(formattedSpecialDates);
       } else {
         console.error(
           "Failed to fetch first record:",
@@ -429,6 +540,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
 
         const accountMasterData = data.account_master_data;
         const detailData = data.account_detail_data || [];
+        const specialDatesData = data.special_date || [];
 
         newAccoid = accountMasterData.contact_Id;
         newDetailId =
@@ -442,6 +554,15 @@ const ContactData = ({ ContactIds, closePopup }) => {
         setFormData((prevFormData) => ({
           ...prevFormData,
           ...accountMasterData,
+          profile1: data.accountMasterData
+            ? `data:image/jpeg;base64,${data.profile1}`
+            : null,
+          profile2: data.accountMasterData
+            ? `data:image/jpeg;base64,${data.profile2}`
+            : null,
+          profile3: data.accountMasterData
+            ? `data:image/jpeg;base64,${data.profile3}`
+            : null,
         }));
 
         setAccountData(accountMasterData || {});
@@ -452,6 +573,12 @@ const ContactData = ({ ContactIds, closePopup }) => {
           .filter((eventCode) => eventCode !== null && eventCode !== undefined);
 
         setSelectedGroups(eventCodes || []);
+
+        const formattedSpecialDates = specialDatesData.map((specialDate) => ({
+          date: specialDate.special_date || "",
+          description: specialDate.description || "",
+        }));
+        setSpecialDates(formattedSpecialDates);
       } else {
         console.error(
           "Failed to fetch previous record:",
@@ -475,6 +602,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
 
         const accountMasterData = data.account_master_data;
         const detailData = data.account_detail_data || [];
+        const specialDatesData = data.special_date || [];
 
         newAccoid = accountMasterData.contact_Id;
         newDetailId =
@@ -488,6 +616,15 @@ const ContactData = ({ ContactIds, closePopup }) => {
         setFormData((prevFormData) => ({
           ...prevFormData,
           ...accountMasterData,
+          profile1: accountMasterData.profile1
+            ? `data:image/jpeg;base64,${accountMasterData.profile1}`
+            : null,
+          profile2: accountMasterData.profile2
+            ? `data:image/jpeg;base64,${accountMasterData.profile2}`
+            : null,
+          profile3: accountMasterData.profile3
+            ? `data:image/jpeg;base64,${accountMasterData.profile3}`
+            : null,
         }));
 
         setAccountData(accountMasterData || {});
@@ -499,6 +636,12 @@ const ContactData = ({ ContactIds, closePopup }) => {
           .filter((eventCode) => eventCode !== null && eventCode !== undefined);
 
         setSelectedGroups(eventCodes || []);
+
+        const formattedSpecialDates = specialDatesData.map((specialDate) => ({
+          date: specialDate.special_date || "",
+          description: specialDate.description || "",
+        }));
+        setSpecialDates(formattedSpecialDates);
       } else {
         console.error(
           "Failed to fetch next record:",
@@ -519,6 +662,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
       const data = response.data.account_master_data;
       const detailData = response.data.account_detail_data || [];
       newAccoid = response.data.account_master_data.contact_Id;
+      const specialDatesData = data.special_date || [];
 
       setFormData((prev) => ({
         ...prev,
@@ -533,6 +677,11 @@ const ContactData = ({ ContactIds, closePopup }) => {
         .filter((eventCode) => eventCode !== null && eventCode !== undefined);
 
       setSelectedGroups((prev) => [...new Set([...prev, ...eventCodes])]);
+      const formattedSpecialDates = specialDatesData.map((specialDate) => ({
+        date: specialDate.special_date || "",
+        description: specialDate.description || "",
+      }));
+      setSpecialDates(formattedSpecialDates);
     };
 
     const fetchAllContactData = async () => {
@@ -706,6 +855,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
               value={formData.mobile_no}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
+              maxLength={10}
             />
           </div>
           <div className="contact-data-form-group">
@@ -717,6 +867,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
               value={formData.mobile_no2}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
+              maxLength={10}
             />
           </div>
           <div className="contact-data-form-group">
@@ -747,11 +898,18 @@ const ContactData = ({ ContactIds, closePopup }) => {
               type="date"
               id="anniversary"
               name="anniversary"
-              value={formData.anniversary}
+              value={formData.anniversary || ""}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
             />
           </div>
+          {isAnniversaryToday && (
+            <div className="special-notification">
+              💍 Today is the Anniversary of{" "}
+              {formData.org_holder_name || "this contact"}!
+            </div>
+          )}
+
           <div className="contact-data-form-group">
             <label htmlFor="website">Website URL:</label>
             <input
@@ -763,17 +921,70 @@ const ContactData = ({ ContactIds, closePopup }) => {
               disabled={!isEditing && addOneButtonEnabled}
             />
           </div>
+
           <div className="contact-data-form-group">
             <label htmlFor="DOB">DOB:</label>
             <input
               type="Date"
               id="DOB"
               name="DOB"
-              value={formData.DOB}
+              value={formData.DOB || ""}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
             />
           </div>
+          {isBirthdayToday && (
+            <div className="special-notification">
+              🎉 Today is the Birthday of{" "}
+              {formData.org_holder_name || "this contact"}!
+            </div>
+          )}
+          <h3>Special Dates</h3>
+          {specialDates.map((specialDate, index) => (
+            <div key={index} className="special-date-entry">
+              <div className="contact-data-form-group">
+                <label htmlFor={`special_date_${index}`}>Special Date:</label>
+                <input
+                  type="date"
+                  id={`special_date_${index}`}
+                  name={`special_date_${index}`}
+                  value={specialDate.date}
+                  onChange={(e) =>
+                    handleSpecialDateChange(index, "date", e.target.value)
+                  }
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="contact-data-form-group">
+                <label htmlFor={`special_date_${index}_description`}>
+                  Description:
+                </label>
+                <input
+                  type="text"
+                  id={`special_date_${index}_description`}
+                  name={`special_date_${index}_description`}
+                  value={specialDate.description}
+                  onChange={(e) =>
+                    handleSpecialDateChange(
+                      index,
+                      "description",
+                      e.target.value
+                    )
+                  }
+                  disabled={!isEditing}
+                />
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="add-special-date-button"
+            onClick={handleAddSpecialDate}
+            disabled={!isEditing}
+          >
+            + Add Special Date
+          </button>
+
           <div className="contact-data-form-group">
             <label htmlFor="note">Note:</label>
             <textarea
@@ -785,6 +996,77 @@ const ContactData = ({ ContactIds, closePopup }) => {
               disabled={!isEditing && addOneButtonEnabled}
               rows={3}
             />
+          </div>
+          <div className="contact-data-form-group">
+            <label htmlFor="bio">Bio:</label>
+            <textarea
+              type="text"
+              id="bio"
+              name="bio"
+              value={formData.bio}
+              onChange={handleChange}
+              disabled={!isEditing && addOneButtonEnabled}
+              rows={3}
+            />
+          </div>
+          <div className="contact-data-form-group">
+            <div className="profile-input-container">
+              <label htmlFor="profile1">Upload Profile 1:</label>
+              <input
+                type="file"
+                id="profile1"
+                name="profile1"
+                accept="image/*"
+                onChange={handleChange}
+                disabled={!isEditing && addOneButtonEnabled}
+              />
+            </div>
+            {formData.profile1 && (
+              <div className="profile-image-container">
+                <img src={formData.profile1} alt="Profile 1" />
+                <p>{formData.profile1FileName}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="contact-data-form-group">
+            <div className="profile-input-container">
+              <label htmlFor="profile2">Upload Profile 2:</label>
+              <input
+                type="file"
+                id="profile2"
+                name="profile2"
+                accept="image/*"
+                onChange={handleChange}
+                disabled={!isEditing && addOneButtonEnabled}
+              />
+            </div>
+            {formData.profile2 && (
+              <div className="profile-image-container">
+                <img src={formData.profile2} alt="Profile 2" />
+                <p>{formData.profile2FileName}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="contact-data-form-group">
+            <div className="profile-input-container">
+              <label htmlFor="profile3">Upload Profile 3:</label>
+              <input
+                type="file"
+                id="profile3"
+                name="profile3"
+                accept="image/*"
+                onChange={handleChange}
+                disabled={!isEditing && addOneButtonEnabled}
+              />
+            </div>
+            {formData.profile3 && (
+              <div className="profile-image-container">
+                <img src={formData.profile3} alt="Profile 3" />
+                <p>{formData.profile3FileName}</p>
+              </div>
+            )}
           </div>
 
           <div className="contact-data-form-table ">

@@ -5,12 +5,14 @@ import requests
 from sqlalchemy import text, func
 from sqlalchemy.exc import SQLAlchemyError
 import os
+import base64
+import json
 
 # Get the base URL from environment variables
 API_URL = os.getenv('API_URL')
 
 # Import schemas from the schemas module
-from app.models.ContactDataModel import ContactDataBankHead,ContactDataBankDetail
+from app.models.ContactDataModel import ContactDataBankHead,ContactDataBankDetail, ContactSpecialDates
 from app.models.ContactDataSchema import ContactDataBankHeadSchema, ContactDataBankDetailSchema
 from app.models.EventGroup.EventGroupModel import EventGroup
 contact_data_head_schema = ContactDataBankHeadSchema()
@@ -88,39 +90,88 @@ ORDER BY h.org_name
 
 
 @app.route(API_URL + "/insert-contactData", methods=["POST"])
-def insert_contactData():
+def insert_contact_data():
     try:
-        data = request.get_json()
-        master_data = data['master_data']
-        contact_data_list = data['contact_data']  # Ensure contact_data is a list of contact details
+        # Ensure the request content type is multipart/form-data
+        if not request.content_type.startswith('multipart/form-data'):
+            return jsonify({"error": "Unsupported Media Type", "message": "Content type must be multipart/form-data"}), 415
 
-        # Insert new master record
+        # Retrieve master_data and contact_data from form fields
+        master_data = request.form.get('master_data', '{}')  # Defaults to an empty dict if not provided
+        contact_data = request.form.get('contact_data', '[]')  # Defaults to an empty list if not provided
+        special_dates_data = request.form.get('special_dates', '[]')
+
+        # Parse the received JSON strings
+        try:
+            master_data = json.loads(master_data)
+            contact_data_list = json.loads(contact_data)
+            special_dates = json.loads(special_dates_data)
+        except json.JSONDecodeError as e:
+            return jsonify({"error": "Bad request", "message": "Invalid JSON in master_data or contact_data"}), 400
+
+        # Debugging logs to verify incoming data
+        print("Received master_data:", master_data)
+        print("Received contact_data:", contact_data_list)
+
+        # Ensure that required data is present
+        if not master_data:
+            return jsonify({"error": "Required fields missing in master_data"}), 400
+
+
+
+        profile1 = request.files.get('profile1')
+        profile2 = request.files.get('profile2')
+        profile3 = request.files.get('profile3')
+
+        # Convert image file data to binary for storage in the database
+        if 'profile1' in master_data and master_data['profile1']:
+            master_data['profile1'] = base64.b64decode(master_data['profile1'].split(",")[1])
+        if 'profile2' in master_data and master_data['profile2']:
+            master_data['profile2'] = base64.b64decode(master_data['profile2'].split(",")[1])
+        if 'profile3' in master_data and master_data['profile3']:
+            master_data['profile3'] = base64.b64decode(master_data['profile3'].split(",")[1])
+
+        # Create a new master record in the database
         new_master = ContactDataBankHead(**master_data)
         db.session.add(new_master)
         db.session.flush()  # Ensure new_master.contact_Id is generated
 
         newContactId = new_master.contact_Id
-        print("newContactId", newContactId)
+        print("newContactId:", newContactId)
 
         createdDetails = []
 
-        # Iterate over contact_data_list
-        for contact_data in contact_data_list:
-            if contact_data.get('rowaction') == "add":
-                del contact_data['rowaction']
-                contact_data['contact_Id'] = newContactId
+        # Process contact data
+        for contact_item in contact_data_list:
+            if isinstance(contact_item, dict) and contact_item.get('rowaction') == 'add':
+                # Remove 'rowaction' before creating the detail record
+                del contact_item['rowaction']
                 
-                # Ensure 'eventCode' exists and is a list
-                if 'eventCode' in contact_data and isinstance(contact_data['eventCode'], list):
-                    for eventCode in contact_data['eventCode']:
-                        detail_data = {key: val for key, val in contact_data.items() if key != 'eventCode'}
-                        detail_data['eventCode'] = eventCode
+                contact_item['contact_Id'] = newContactId
+                eventCode = contact_item.get('eventCode')
+                if eventCode and isinstance(eventCode, list):
+                    for code in eventCode:
+                        detail_data = {k: v for k, v in contact_item.items() if k != 'eventCode'}
+                        detail_data['eventCode'] = code
                         detail_data['contact_Id'] = newContactId
-                        new_contact = ContactDataBankDetail(**detail_data)
-                        db.session.add(new_contact)
-                        createdDetails.append(new_contact)
-                else:
-                    return jsonify({"error": "Missing or incorrect 'eventCode', should be a list"}), 400
+                        new_detail = ContactDataBankDetail(**detail_data)
+                        db.session.add(new_detail)
+                        createdDetails.append(new_detail)
+
+        # Save profile images and update paths in the database
+        for i in range(1, 4):
+            file = request.files.get(f'profile{i}')
+            if file:
+                # Save the binary content of the file directly into the database
+                new_master.__setattr__(f'profile{i}', file.read())
+        
+        for special_date in special_dates:
+            new_special_date = ContactSpecialDates(
+                contact_Id=newContactId,
+                special_date=special_date['date'],
+                description=special_date['description']
+            )
+            db.session.add(new_special_date)
 
         db.session.commit()
 
@@ -131,13 +182,12 @@ def insert_contactData():
         }), 201
 
     except Exception as e:
-        print("Traceback", traceback.format_exc())
         db.session.rollback()
+        print(f"Exception occurred: {str(e)}")
+        print("Traceback:", traceback.format_exc())
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 
-
-    
 
 @app.route(API_URL + "/update-contactData", methods=["PUT"])
 def update_contactData():
@@ -146,12 +196,43 @@ def update_contactData():
         if not contact_Id:
             return jsonify({"error": "Missing 'contact_Id' parameter"}), 400
 
-        data = request.get_json()
-        master_data = data['master_data']
-        contact_data_list = data['contact_data']  # Assuming contact_data is a list of contact details
+        master_data = None
+        contact_data_list = None
 
-        # Update the master record
+        if request.content_type.startswith('multipart/form-data'):
+            master_data = request.form.get('master_data', '{}')
+            contact_data = request.form.get('contact_data', '[]')
+            special_dates_data = request.form.get('special_dates', '[]')
+
+            try:
+                master_data = json.loads(master_data)
+                contact_data_list = json.loads(contact_data)
+                special_dates = json.loads(special_dates_data)
+            except json.JSONDecodeError:
+                return jsonify({"error": "Invalid JSON format"}), 400
+        else:
+            data = request.get_json()
+            if data:
+                master_data = data.get('master_data', {})
+                contact_data_list = data.get('contact_data', [])
+                special_dates = data.get('special_dates', [])
+
+        if master_data is None:
+            return jsonify({"error": "Missing required data"}), 400
+
+        if 'contact_Id' in master_data:
+            del master_data['contact_Id']
+
+        if 'profile1' in master_data and master_data['profile1']:
+            master_data['profile1'] = base64.b64decode(master_data['profile1'].split(",")[1])
+        if 'profile2' in master_data and master_data['profile2']:
+            master_data['profile2'] = base64.b64decode(master_data['profile2'].split(",")[1])
+        if 'profile3' in master_data and master_data['profile3']:
+            master_data['profile3'] = base64.b64decode(master_data['profile3'].split(",")[1])
+
         ContactDataBankHead.query.filter_by(contact_Id=contact_Id).update(master_data)
+        db.session.flush()  # It might be necessary to flush session to apply updates before querying
+
         updated_account_master = ContactDataBankHead.query.filter_by(contact_Id=contact_Id).one()
         updatedAcCode = updated_account_master.contact_Id
 
@@ -159,14 +240,11 @@ def update_contactData():
         updatedDetails = []
         deletedDetailIds = []
 
-        # Iterate over the contact data list
         for contact_data in contact_data_list:
-            contact_data['contact_Id'] = updatedAcCode  # Update contact_Id in each contact detail
+            contact_data['contact_Id'] = updatedAcCode  # Ensure contact_Id is updated correctly
 
             if contact_data.get('rowaction') == "add":
                 del contact_data['rowaction']
-
-                # Ensure 'eventCode' exists and is a list
                 if 'eventCode' in contact_data and isinstance(contact_data['eventCode'], list):
                     for eventCode in contact_data['eventCode']:
                         detail_data = {key: val for key, val in contact_data.items() if key != 'eventCode'}
@@ -190,6 +268,21 @@ def update_contactData():
                     db.session.delete(contact_to_delete)
                     deletedDetailIds.append(contactdetail_id)
 
+        for i in range(1, 4):
+            file = request.files.get(f'profile{i}')
+            if file:
+                binary_data = file.read()
+                updated_account_master.__setattr__(f'profile{i}', binary_data)
+
+        ContactSpecialDates.query.filter_by(contact_Id=contact_Id).delete()  # Delete existing special dates
+        for special_date in special_dates:
+            updated_special_date = ContactSpecialDates(
+                contact_Id=updatedAcCode,
+                special_date=special_date['date'],
+                description=special_date['description']
+            )
+            db.session.add(updated_special_date)
+
         db.session.commit()
 
         return jsonify({
@@ -203,7 +296,6 @@ def update_contactData():
         db.session.rollback()
         print("Traceback", traceback.format_exc())
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
-
     
 
 @app.route(API_URL + "/delete_contactData", methods=["DELETE"])
@@ -214,6 +306,7 @@ def delete_contactData():
             return jsonify({"error": "Missing required parameter"}), 400
 
         with db.session.begin():
+            ContactSpecialDates.query.filter_by(contact_Id=contact_Id).delete()
             deleted_contact_rows = ContactDataBankDetail.query.filter_by(contact_Id=contact_Id).delete()
             deleted_master_rows = ContactDataBankHead.query.filter_by(contact_Id=contact_Id).delete()
 
@@ -227,36 +320,115 @@ def delete_contactData():
         db.session.rollback()
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
     
+# @app.route(API_URL + "/getcontactDataByid", methods=["GET"])
+# def getcontactDataByid():
+#     try:
+#         contact_Id = request.args.get('contact_Id')
+#         if not all([contact_Id]):
+#             return jsonify({"error": "Missing required parameters"}), 400
+
+#         account_master = ContactDataBankHead.query.filter_by(contact_Id=contact_Id).first()
+#         if not account_master:
+#             return jsonify({"error": "No records found"}), 404
+
+#         contact_Id = account_master.contact_Id
+
+#         account_master_data = {column.name: getattr(account_master, column.name) for column in account_master.__table__.columns}
+#         account_master_data.update(format_dates(account_master))
+
+#         detail_records = ContactDataBankDetail.query.filter_by(contact_Id=contact_Id).all()
+#         if not detail_records:
+#             detail_data = []
+#         else:
+#             detail_data = [{column.name: getattr(detail_record, column.name) for column in detail_record.__table__.columns} for detail_record in detail_records]
+
+#         response = {
+#             "account_master_data": account_master_data,
+#             "account_detail_data": detail_data,
+#         }
+#         return jsonify(response), 200
+
+#     except Exception as e:
+#         return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
 @app.route(API_URL + "/getcontactDataByid", methods=["GET"])
 def getcontactDataByid():
     try:
         contact_Id = request.args.get('contact_Id')
-        if not all([contact_Id]):
+        if not contact_Id:
             return jsonify({"error": "Missing required parameters"}), 400
 
+        # Query to fetch the account master data
         account_master = ContactDataBankHead.query.filter_by(contact_Id=contact_Id).first()
         if not account_master:
             return jsonify({"error": "No records found"}), 404
 
-        contact_Id = account_master.contact_Id
-
+        # Mapping account master data
         account_master_data = {column.name: getattr(account_master, column.name) for column in account_master.__table__.columns}
         account_master_data.update(format_dates(account_master))
+        # Convert images (stored as binary) to base64-encoded strings
+        images = {}
+        for i in range(1, 4):
+            image_field = getattr(account_master, f'profile{i}', None)
+            if image_field:
+                images[f'profile{i}'] = base64.b64encode(image_field).decode('utf-8')
+            else:
+                images[f'profile{i}'] = None  # If no image is available, set it to None
 
-        detail_records = ContactDataBankDetail.query.filter_by(contact_Id=contact_Id).all()
-        if not detail_records:
-            detail_data = []
-        else:
-            detail_data = [{column.name: getattr(detail_record, column.name) for column in detail_record.__table__.columns} for detail_record in detail_records]
+        # Add the images to the master data
+        account_master_data.update(images)
 
+        # Use the text() function to execute raw SQL query
+        detail_records = db.session.execute(text("""
+            SELECT 
+                MAX(dbo.EventGroup.eventName) AS eventName, 
+                dbo.Contact_Data_Bank_Detail.contactdetail_id, 
+                dbo.Contact_Data_Bank_Detail.eventCode, 
+                dbo.Contact_Data_Bank_Detail.contact_Id
+            FROM 
+                dbo.EventGroup 
+            RIGHT OUTER JOIN 
+                dbo.Contact_Data_Bank_Detail ON dbo.EventGroup.eventCode = dbo.Contact_Data_Bank_Detail.eventCode 
+            RIGHT OUTER JOIN 
+                dbo.Contact_Data_Bank_Head ON dbo.Contact_Data_Bank_Detail.contact_Id = dbo.Contact_Data_Bank_Head.contact_Id
+            WHERE 
+                dbo.Contact_Data_Bank_Head.contact_Id = :contact_Id
+            GROUP BY 
+                dbo.Contact_Data_Bank_Detail.contactdetail_id, 
+                dbo.Contact_Data_Bank_Detail.eventCode, 
+                dbo.Contact_Data_Bank_Detail.contact_Id
+        """), {'contact_Id': contact_Id}).fetchall()
+
+        # Map detail records including event names
+        detail_data = [
+            {
+                "contactdetail_id": detail_record.contactdetail_id,
+                "eventCode": detail_record.eventCode,
+                "contact_Id": detail_record.contact_Id,
+                "eventName": detail_record.eventName  # Include eventName from EventGroup table
+            }
+            for detail_record in detail_records
+        ]
+
+        special_dates = ContactSpecialDates.query.filter_by(contact_Id=contact_Id).all()
+        special_dates_data = [
+            {"special_date": special_date.special_date.strftime('%Y-%m-%d'),
+             "description": special_date.description}
+            for special_date in special_dates
+        ]
+
+        # Prepare response
         response = {
             "account_master_data": account_master_data,
-            "account_detail_data": detail_data,
+            "account_detail_data": detail_data,  # Includes eventName from EventGroup table
+            "special_date": special_dates_data
         }
+
         return jsonify(response), 200
 
     except Exception as e:
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
     
 @app.route(API_URL + "/get-lastcontactdata", methods=["GET"])
 def get_lastcontactdata():
@@ -271,30 +443,42 @@ def get_lastcontactdata():
         account_master_data = {column.name: getattr(last_account_master, column.name) for column in last_account_master.__table__.columns}
         account_master_data.update(format_dates(last_account_master))
 
+        # Return file paths or URLs instead of binary data
+        account_master_data['profile1'] = base64.b64encode(last_account_master.profile1).decode('utf-8') if last_account_master.profile1 else None
+        account_master_data['profile2'] = base64.b64encode(last_account_master.profile2).decode('utf-8') if last_account_master.profile2 else None
+        account_master_data['profile3'] = base64.b64encode(last_account_master.profile3).decode('utf-8') if last_account_master.profile3 else None
+
+
         contact_Id = last_account_master.contact_Id
 
         # Fetch detail records for the specific contact_Id
         detail_records = ContactDataBankDetail.query.filter_by(contact_Id=contact_Id).all()
 
-        # Ensure there are detail records and safely handle them
-        if not detail_records:
-            detail_data = []
-        else:
-            detail_data = [{column.name: getattr(detail_record, column.name) for column in detail_record.__table__.columns} for detail_record in detail_records]
+        # Convert detail records to dictionaries
+        detail_data = [{column.name: getattr(detail_record, column.name) for column in detail_record.__table__.columns} for detail_record in detail_records]
 
+        special_dates = ContactSpecialDates.query.filter_by(contact_Id=contact_Id).all()
+        special_dates_data = [
+            {"special_date": special_date.special_date.strftime('%Y-%m-%d'),
+             "description": special_date.description}
+            for special_date in special_dates
+        ]
+
+       
         # Build the response object
         response = {
             "account_master_data": account_master_data,
-            "account_detail_data": detail_data
+            "account_detail_data": detail_data,
+            "special_date": special_dates_data
         }
 
         return jsonify(response), 200
 
-    except IndexError:
-        return jsonify({"error": "No detail records found for the given contact_Id"}), 404
     except Exception as e:
-        print("Error: ", e)
+        print(f"Exception occurred: {str(e)}")
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
 
     
 @app.route(API_URL + "/get-firstcontact-navigation", methods=["GET"])
@@ -307,26 +491,39 @@ def get_firstcontact_navigation():
 
         contact_Id = first_account_master.contact_Id
 
+        # Map account master data
         account_master_data = {column.name: getattr(first_account_master, column.name) for column in first_account_master.__table__.columns}
         account_master_data.update(format_dates(first_account_master))
 
+        account_master_data['profile1'] = base64.b64encode(first_account_master.profile1).decode('utf-8') if first_account_master.profile1 else None
+        account_master_data['profile2'] = base64.b64encode(first_account_master.profile2).decode('utf-8') if first_account_master.profile2 else None
+        account_master_data['profile3'] = base64.b64encode(first_account_master.profile3).decode('utf-8') if first_account_master.profile3 else None
 
+        # Fetch detail records for the specific contact_Id
         detail_records = ContactDataBankDetail.query.filter_by(contact_Id=contact_Id).all()
-
 
         if not detail_records:
             detail_data = []
         else:
             detail_data = [{column.name: getattr(detail_record, column.name) for column in detail_record.__table__.columns} for detail_record in detail_records]
 
+        special_dates = ContactSpecialDates.query.filter_by(contact_Id=contact_Id).all()
+        special_dates_data = [
+            {"special_date": special_date.special_date.strftime('%Y-%m-%d'),
+             "description": special_date.description}
+            for special_date in special_dates
+        ]
+
         response = {
             "account_master_data": account_master_data,
             "account_detail_data": detail_data,
+            "special_date": special_dates_data
         }
         return jsonify(response), 200
 
     except Exception as e:
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
     
 @app.route(API_URL + "/get-previouscontact-navigation", methods=["GET"])
 def get_previouscontact_navigation():
@@ -346,6 +543,10 @@ def get_previouscontact_navigation():
         account_master_data = {column.name: getattr(previous_account_master, column.name) for column in previous_account_master.__table__.columns}
         account_master_data.update(format_dates(previous_account_master))
 
+        account_master_data['profile1'] = base64.b64encode(previous_account_master.profile1).decode('utf-8') if previous_account_master.profile1 else None
+        account_master_data['profile2'] = base64.b64encode(previous_account_master.profile2).decode('utf-8') if previous_account_master.profile2 else None
+        account_master_data['profile3'] = base64.b64encode(previous_account_master.profile3).decode('utf-8') if previous_account_master.profile3 else None
+
 
         detail_records = ContactDataBankDetail.query.filter_by(contact_Id=contact_Id).all()
 
@@ -355,9 +556,19 @@ def get_previouscontact_navigation():
         else:
             detail_data = [{column.name: getattr(detail_record, column.name) for column in detail_record.__table__.columns} for detail_record in detail_records]
 
+        special_dates = ContactSpecialDates.query.filter_by(contact_Id=contact_Id).all()
+        special_dates_data = [
+        {
+        "special_date": special_date.special_date.strftime('%Y-%m-%d') if special_date.special_date else "",
+        "description": special_date.description if special_date.description else ""
+        }
+        for special_date in special_dates
+        ]
+
         response = {
             "account_master_data": account_master_data,
             "account_detail_data": detail_data,
+            "special_date": special_dates_data
         }
         return jsonify(response), 200
 
@@ -383,6 +594,10 @@ def get_nextcontact_navigation():
         account_master_data = {column.name: getattr(next_account_master, column.name) for column in next_account_master.__table__.columns}
         account_master_data.update(format_dates(next_account_master))
 
+        account_master_data['profile1'] = base64.b64encode(next_account_master.profile1).decode('utf-8') if next_account_master.profile1 else None
+        account_master_data['profile2'] = base64.b64encode(next_account_master.profile2).decode('utf-8') if next_account_master.profile2 else None
+        account_master_data['profile3'] = base64.b64encode(next_account_master.profile3).decode('utf-8') if next_account_master.profile3 else None
+
 
         detail_records = ContactDataBankDetail.query.filter_by(contact_Id=contact_Id).all()
 
@@ -391,9 +606,17 @@ def get_nextcontact_navigation():
         else:
             detail_data = [{column.name: getattr(detail_record, column.name) for column in detail_record.__table__.columns} for detail_record in detail_records]
 
+        special_dates = ContactSpecialDates.query.filter_by(contact_Id=contact_Id).all()
+        special_dates_data = [
+            {"special_date": special_date.special_date.strftime('%Y-%m-%d'),
+             "description": special_date.description}
+            for special_date in special_dates
+        ]
+
         response = {
             "account_master_data": account_master_data,
             "account_detail_data": detail_data,
+            "special_date": special_dates_data
         }
         return jsonify(response), 200
 
@@ -514,9 +737,12 @@ def get_contact_data_by_orgname():
 
         
         query = text("""
-            SELECT h.org_name, h.contact_Id, h.org_holder_name, h.city, h.designation, h.state, h.country, h.mobile_no, h.email, h.website, h.anniversary, h.DOB
+           SELECT h.org_name, h.contact_Id, h.org_holder_name, h.city, h.designation, h.state, h.country, h.mobile_no, h.email, h.website, h.anniversary, h.DOB, e.eventName
             FROM dbo.Contact_Data_Bank_Head AS h
+            LEFT OUTER JOIN dbo.Contact_Data_Bank_Detail AS d ON h.contact_Id = d.contact_Id
+            LEFT OUTER JOIN dbo.EventGroup AS e ON d.eventCode = e.eventCode
             WHERE h.org_name IN :orgNames
+            GROUP BY h.org_name, h.contact_Id, h.org_holder_name, h.city, h.designation, h.state, h.country, h.mobile_no, h.email, h.website, h.anniversary, h.DOB, e.eventName
             ORDER BY h.org_name
         """)
 
@@ -536,7 +762,8 @@ def get_contact_data_by_orgname():
                 'email': row.email,
                 'website': row.website,
                 'anniversary': row.anniversary.strftime('%Y-%m-%d') if row.anniversary else None,
-                'DOB': row.DOB.strftime('%Y-%m-%d') if row.DOB else None
+                'DOB': row.DOB.strftime('%Y-%m-%d') if row.DOB else None,
+                'eventName': row.eventName,
             }
             for row in result
         ]

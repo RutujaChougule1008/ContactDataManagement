@@ -5,6 +5,7 @@ class ContactDataBankHeadSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = ContactDataBankHead
         include_relationships = True
+        exclude = ('profile1', 'profile2', 'profile3')
 
 class ContactDataBankDetailSchema(SQLAlchemyAutoSchema):
     class Meta:
