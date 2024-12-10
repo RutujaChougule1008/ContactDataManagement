@@ -42,7 +42,7 @@ const EventGroupMaster = () => {
       setEditButtonEnabled(true);
       setDeleteButtonEnabled(true);
       setSaveButtonEnabled(false);
-      setCancelButtonEnabled(false);
+      setCancelButtonEnabled(true);
     } else {
       handleAddOne();
     }
@@ -249,6 +249,7 @@ const EventGroupMaster = () => {
         deleteButtonEnabled={deleteButtonEnabled}
         backButtonEnabled={backButtonEnabled}
         handleBack={handleBack}
+        isViewer={isViewer}
       />
       <NavigationButtons
         handleFirstButtonClick={handleFirstButtonClick}

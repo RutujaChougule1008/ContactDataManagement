@@ -13,7 +13,8 @@ const ActionButtonGroup = ({
   handleCancel,
   cancelButtonEnabled,
   handleBack,
-  backButtonEnabled
+  backButtonEnabled,
+  isViewer
 }) => {
   const editButtonRef = useRef(null);
   const updateButtonRef = useRef(null);
@@ -59,14 +60,14 @@ const ActionButtonGroup = ({
     >
       <button
         onClick={handleAddOne}
-        disabled={!addOneButtonEnabled}
+        disabled={!addOneButtonEnabled || isViewer}
    
         onKeyDown={(event) => handleKeyDown(event, handleAddOne)}
         style={{
           backgroundColor: addOneButtonEnabled ? "blue" : "white",
           color: addOneButtonEnabled ? "white" : "black",
           border: "1px solid #ccc",
-          cursor: "pointer",
+          cursor: isViewer ? "not-allowed" : "pointer",
           width: "4%",
           height: "35px",
           fontSize: "12px",
@@ -96,14 +97,14 @@ const ActionButtonGroup = ({
       ) : (
         <button
           onClick={handleSaveOrUpdate}
-          disabled={!saveButtonEnabled}
+          disabled={!saveButtonEnabled || isViewer}
           onKeyDown={(event) => handleKeyDown(event, handleSaveOrUpdate)}
           id="save"
           style={{
             backgroundColor: saveButtonEnabled ? "blue" : "white",
             color: saveButtonEnabled ? "white" : "black",
             border: "1px solid #ccc=",
-            cursor: saveButtonEnabled ? "pointer" : "not-allowed",
+            cursor: saveButtonEnabled && !isViewer ? "pointer" : "not-allowed",
             width: "4%",
             height: "35px",
             fontSize: "12px",
@@ -115,13 +116,13 @@ const ActionButtonGroup = ({
       <button
         ref={editButtonRef}
         onClick={handleEdit}
-        disabled={!editButtonEnabled}
+        disabled={!editButtonEnabled || isViewer}
         onKeyDown={(event) => handleKeyDown(event, handleEdit)}
         style={{
           backgroundColor: editButtonEnabled ? "blue" : "white",
           color: editButtonEnabled ? "white" : "black",
           border: "1px solid #ccc",
-          cursor: editButtonEnabled ? "pointer" : "not-allowed",
+          cursor: editButtonEnabled && !isViewer? "pointer" : "not-allowed",
           width: "4%",
           height: "35px",
           fontSize: "12px",
@@ -131,13 +132,13 @@ const ActionButtonGroup = ({
       </button>
       <button
         onClick={handleDelete}
-        disabled={!deleteButtonEnabled}
+        disabled={!deleteButtonEnabled || isViewer}
         onKeyDown={(event) => handleKeyDown(event, handleDelete)}
         style={{
           backgroundColor: deleteButtonEnabled ? "blue" : "white",
           color: deleteButtonEnabled ? "white" : "black",
           border: "1px solid #ccc",
-          cursor: deleteButtonEnabled ? "pointer" : "not-allowed",
+          cursor: deleteButtonEnabled&& !isViewer ? "pointer" : "not-allowed",
           width: "4%",
           height: "35px",
           fontSize: "12px",

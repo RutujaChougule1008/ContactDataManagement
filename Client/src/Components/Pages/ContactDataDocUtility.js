@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Table,
@@ -12,8 +12,7 @@ import {
   Grid,
   Paper,
   Typography,
-  useTheme,
-  useMediaQuery,
+  Box,
 } from "@mui/material";
 import Pagination from "../../common/Pagination";
 import SearchBar from "../../common/SearchBar";
@@ -35,12 +34,12 @@ function ContactDataDocUtility() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const { selectedContacts, setSelectedContacts } = useContacts();
-  const [duplicates, setDuplicates] = useState([]);
+  const [duplicates, setDuplicates] = useState({});
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [tableHeight, setTableHeight] = useState("calc(100vh - 350px)");
+
   const [showContactDataPopUp, setShowContactDataPopUp] = useState(false);
-  const [contactData, setContactData] = useState({}); // Store fetched contact data
+  const [contactData, setContactData] = useState({ first: null, second: null });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,7 +59,45 @@ function ContactDataDocUtility() {
   }, []);
 
   useEffect(() => {
-    const filtered = fetchedData.filter((post) => {
+    const handleResize = () => {
+      const availableHeight = window.innerHeight - 350; // Adjust for header, footer, and padding
+      setTableHeight(`${availableHeight}px`);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    const mobileNumberMap = {};
+    fetchedData.forEach((contact) => {
+      const mobileNumber = contact.mobile_no;
+      if (mobileNumber) {
+        if (mobileNumberMap[mobileNumber]) {
+          mobileNumberMap[mobileNumber].push(contact);
+        } else {
+          mobileNumberMap[mobileNumber] = [contact];
+        }
+      }
+    });
+
+    const duplicateContacts = Object.values(mobileNumberMap).filter(
+      (group) => group.length > 1
+    );
+
+    const duplicateMap = duplicateContacts.reduce((acc, group) => {
+      group.forEach((contact) => {
+        acc[contact.contact_Id] = true;
+      });
+      return acc;
+    }, {});
+
+    setDuplicates(duplicateMap);
+  }, [fetchedData]);
+
+  useEffect(() => {
+    let filtered = fetchedData.filter((post) => {
       const searchTermLower = searchTerm.toLowerCase();
       return Object.keys(post).some((key) => {
         const value = post[key];
@@ -72,28 +109,15 @@ function ContactDataDocUtility() {
       });
     });
 
+    filtered = filtered.sort((a, b) => {
+      if (a.mobile_no < b.mobile_no) return -1;
+      if (a.mobile_no > b.mobile_no) return 1;
+      return 0;
+    });
+
     setFilteredData(filtered);
     setCurrentPage(1);
   }, [searchTerm, fetchedData]);
-
-  useEffect(() => {
-    const duplicateMap = {};
-    fetchedData.forEach((contact) => {
-      const key = `${contact.org_name}-${contact.org_holder_name}`;
-      if (duplicateMap[key]) {
-        duplicateMap[key].push(contact);
-      } else {
-        duplicateMap[key] = [contact];
-      }
-    });
-
-    const duplicateGroups = Object.values(duplicateMap).filter(
-      (group) => group.length > 1
-    );
-
-    // Flatten the duplicates and store them
-    setDuplicates(duplicateGroups.flat());
-  }, [fetchedData]);
 
   const handlePerPageChange = (event) => {
     setPerPage(event.target.value);
@@ -133,7 +157,6 @@ function ContactDataDocUtility() {
         ? prevSelected.filter((id) => id !== contactId)
         : [...prevSelected, contactId];
 
-      console.log("Updated Selected Contacts:", newSelected);
       return newSelected;
     });
   };
@@ -143,10 +166,10 @@ function ContactDataDocUtility() {
       const { data } = await axios.get(
         `${API_URL}/getcontactDataByid?contact_Id=${contactId}`
       );
-      return data; // Return the fetched data for the contact
+      return data;
     } catch (error) {
       console.error("Error fetching contact data:", error);
-      return null; // Return null in case of error
+      return null;
     }
   };
 
@@ -156,17 +179,27 @@ function ContactDataDocUtility() {
       return;
     }
 
-    setShowContactDataPopUp(true);
+    try {
+      const response = await axios.put(`${API_URL}/merge-contacts`, null, {
+        params: {
+          first_contact_Id: selectedContacts[0],
+          second_contact_Id: selectedContacts[1],
+        },
+      });
 
-    // Fetch data for both contacts
-    const firstContactData = await fetchContactData(selectedContacts[0]);
-    const secondContactData = await fetchContactData(selectedContacts[1]);
-
-    setContactData({
-      first: firstContactData,
-      second: secondContactData,
-    });
-    setSearchTerm("");
+      if (response.status === 200) {
+        toast.success("Contacts merged successfully!");
+        setSelectedContacts([]);
+        const updatedData = await axios.get(`${API_URL}/get-contactData`);
+        setFetchedData(updatedData.data.all_data);
+        setFilteredData(updatedData.data.all_data);
+      } else {
+        throw new Error(response.data.message);
+      }
+    } catch (error) {
+      console.error("Error merging contacts:", error);
+      toast.error("Failed to merge contacts. Please try again.");
+    }
   };
 
   const handleClosePopup = () => {
@@ -181,27 +214,24 @@ function ContactDataDocUtility() {
   }, []);
 
   return (
-    <div
-      style={{
-        padding: "20px",
-        maxWidth: "3500px",
-        margin: "auto",
-        backgroundColor: "white",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        borderRadius: "8px",
-      }}
+    <Box
+    sx={{
+      padding: "10px",
+      margin: "auto",
+      backgroundColor: "white",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+      borderRadius: "8px",
+      maxWidth:"95%",
+      overflow: "auto",
+      marginLeft:"22vh"
+    }}
     >
       <ToastContainer />
       <Typography variant="h4" gutterBottom textAlign="center">
         Contact Data
       </Typography>
 
-      <Grid
-        container
-        spacing={2}
-        alignItems="center"
-        justifyContent="space-between"
-      >
+      <Grid container spacing={2} alignItems="center" justifyContent="space-between">
         <Grid item>
           <Button
             variant="contained"
@@ -218,74 +248,32 @@ function ContactDataDocUtility() {
           </Button>
         </Grid>
         <Grid item>
+  <Button
+    variant="contained"
+    color="error"
+    onClick={handleMergeContacts}
+    disabled={selectedContacts.length !== 2 || !selectedContacts.every(contactId => duplicates[contactId])}
+  >
+    Merge Selected Contacts
+  </Button>
+</Grid>
+        <Grid item>
           <PerPageSelect value={perPage} onChange={handlePerPageChange} />
         </Grid>
         <Grid item xs={12} sm={4}>
           <SearchBar value={searchTerm} onChange={handleSearchTermChange} />
         </Grid>
-
-        {selectedContacts.length === 2 && (
-          <Grid container spacing={2} item xs={12} sm={4}>
-            <Grid item>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleMergeContacts}
-              >
-                View Contact
-              </Button>
-            </Grid>
-
-            {showContactDataPopUp && (
-              <div className="city-master-modal">
-                {contactData.first && (
-                  <div className="city-master-modal-content">
-                    <button
-                      className="city-master-close-btn"
-                      onClick={handleClosePopup}
-                    >
-                      &times;
-                    </button>
-                    <div className="city-master-popup-wrapper">
-                      <ContactDataDoc
-                        ContactIds={[selectedContacts[0]]}
-                        closePopup={handleClosePopup}
-                      />
-                    </div>
-                  </div>
-                )}
-                {contactData.second && (
-                  <div className="city-master-modal-content">
-                    <button
-                      className="city-master-close-btn"
-                      onClick={handleClosePopup}
-                    >
-                      &times;
-                    </button>
-                    <div className="city-master-popup-wrapper">
-                      <ContactDataDoc
-                        ContactIds={[selectedContacts[1]]}
-                        closePopup={handleClosePopup}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </Grid>
-        )}
       </Grid>
 
       <TableContainer
         component={Paper}
         sx={{
           marginTop: 2,
-          maxHeight: "70vh",
-          maxWidth: "3000px",
-          width: "180vh",
+          maxHeight: tableHeight,
+          overflowY: "auto",
         }}
       >
-        <Table>
+        <Table stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell>Select</TableCell>
@@ -300,23 +288,13 @@ function ContactDataDocUtility() {
               <TableCell>Website URL</TableCell>
               <TableCell>Anniversary</TableCell>
               <TableCell>DOB</TableCell>
-              <TableCell>Count</TableCell>
+              <TableCell>Status</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {paginatedPosts.map((post) => {
-              // Check for duplicates in filteredData based on org_name and org_holder_name
-              const isDuplicate =
-                filteredData.filter(
-                  (item) =>
-                    item.org_name === post.org_name &&
-                    item.org_holder_name === post.org_holder_name
-                ).length > 1; // Check if there is more than one record
-
+              const isDuplicate = !!duplicates[post.contact_Id];
               const isSelected = selectedContacts.includes(post.contact_Id);
-
-              // Show checkbox only if there is a duplicate
-              const showCheckbox = isDuplicate;
 
               return (
                 <TableRow
@@ -325,7 +303,7 @@ function ContactDataDocUtility() {
                   onDoubleClick={() => handleRowClick(post.contact_Id)}
                 >
                   <TableCell>
-                    {showCheckbox && (
+                    {isDuplicate && (
                       <Checkbox
                         checked={isSelected}
                         onChange={() => handleCheckboxChange(post.contact_Id)}
@@ -343,7 +321,7 @@ function ContactDataDocUtility() {
                   <TableCell>{post.website || ""}</TableCell>
                   <TableCell>{post.anniversary || ""}</TableCell>
                   <TableCell>{post.DOB || ""}</TableCell>
-                  <TableCell>{post.eventCodeCount}</TableCell>
+                  <TableCell>{isDuplicate ? "Duplicate" : "Unique"}</TableCell>
                 </TableRow>
               );
             })}
@@ -358,7 +336,7 @@ function ContactDataDocUtility() {
           onPageChange={handlePageChange}
         />
       </Grid>
-    </div>
+    </Box>
   );
 }
 

@@ -27,6 +27,7 @@ const API_URL = process.env.REACT_APP_API_URL;
 const SearchPageUtility = () => {
   const userRole = sessionStorage.getItem("user_type");
   const isViewer = userRole === "V";
+  const isEditor = userRole === "E";
 
   const [contactData, setContactData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -243,7 +244,7 @@ const SearchPageUtility = () => {
   }, [eventCodes]);
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={{ padding: "20px", marginLeft:"16vh" }}>
       <Typography variant="h4" gutterBottom textAlign="center">
         {eventNames && eventNames.length > 0
           ? `Report for: ${eventNames.join(", ")}`
@@ -267,9 +268,11 @@ const SearchPageUtility = () => {
       )}
 
       <Grid container justifyContent="flex-end" sx={{ marginBottom: 2 }}>
-        <Button variant="contained" onClick={handleClick} disabled={isViewer}>
-          Export To
-        </Button>
+      {!isViewer && !isEditor && (
+  <Button variant="contained" onClick={handleClick}>
+    Export To
+  </Button>
+)}
         <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
           <MenuItem
             onClick={() => {

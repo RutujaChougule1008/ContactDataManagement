@@ -20,12 +20,12 @@ const ContactData = ({ ContactIds, closePopup }) => {
   const { selectedContacts } = useContacts(); // Access the selected contacts from context
 
   // If you still want to use ContactIds prop, you can combine it with selectedContacts
-  const contactIdsToUse = ContactIds || selectedContacts;
+  const contactIdsToUse = ContactIds || selectedContacts
 
   const userRole = sessionStorage.getItem("user_type"); // Retrieve user role
   const isViewer = userRole === "V";
 
-  const [updateButtonClicked, setUpdateButtonClicked] = useState(!isViewer);
+  const [updateButtonClicked, setUpdateButtonClicked] = useState();
   const [saveButtonClicked, setSaveButtonClicked] = useState(false);
   const [addOneButtonEnabled, setAddOneButtonEnabled] = useState(true);
   const [saveButtonEnabled, setSaveButtonEnabled] = useState(!isViewer);
@@ -50,7 +50,10 @@ const ContactData = ({ ContactIds, closePopup }) => {
   const [selectedGroups, setSelectedGroups] = useState([]);
   const [contactData, setContactData] = useState(null);
   const [loading, setLoading] = useState(true); // Loading state
-  const [error, setError] = useState(null); // Error state
+  const [error, setError] = useState(null);
+  const [firstContactData, setFirstContactData] = useState(null); // State for the first contact
+  const [secondContactData, setSecondContactData] = useState(null); // State for the second contact
+  const [fetchedContactIds, setFetchedContactIds] = useState([]);
   const [imageData, setImageData] = useState({
     profile1: "",
     profile2: "",
@@ -90,6 +93,8 @@ const ContactData = ({ ContactIds, closePopup }) => {
     profile1FileName: "",
     profile2FileName: "",
     profile3FileName: "",
+    UCC_Number: "",
+    contact_Id:null
   };
 
   const orgNameRef = useRef(null);
@@ -125,6 +130,20 @@ const ContactData = ({ ContactIds, closePopup }) => {
       }));
     }
   };
+
+  const handleRemoveSpecialDate = index => {
+    setSpecialDates(prevDates => prevDates.filter((_, i) => i !== index));
+  };
+
+  // Function to toggle minimization of a special date field
+  const handleToggleMinimize = index => {
+    setSpecialDates(prevDates =>
+      prevDates.map((date, i) =>
+        i === index ? { ...date, minimized: !date.minimized } : date
+      )
+    );
+  };
+
 
   const handleCheckboxAcGroups = (e, group) => {
     const { checked } = e.target;
@@ -192,6 +211,36 @@ const ContactData = ({ ContactIds, closePopup }) => {
     setSpecialDates([...specialDates, { date: "", description: "" }]);
   };
 
+  const handleRemoveImage = (imageKey) => {
+    setFormData((prevData) => ({
+      ...prevData,
+      [imageKey]: null,
+      [`${imageKey}FileName`]: "",
+
+    }));
+  };
+
+  const fetchLastRecord = () => {
+    fetch(`${API_URL}/next-contact-id`)
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error("Failed to fetch last record");
+            }
+            return response.json();
+        })
+        .then((data) => {
+            setFormData((prevState) => ({
+                ...prevState,
+                contact_Id: data.nextContactId
+            }));
+        })
+        .catch((error) => {
+            console.error("Error fetching last record:", error);
+        });
+};
+
+  
+
   const handleAddOne = () => {
     if (isViewer) return;
     setAddOneButtonEnabled(false);
@@ -202,6 +251,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
     setIsEditMode(false);
     setIsEditing(true);
     setFormData(initialFormData);
+    fetchLastRecord();
     setAccountDetail([]);
     setSelectedGroups([]);
     setImageData({});
@@ -210,6 +260,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
   };
 
   const handleSaveOrUpdate = async () => {
+    if (isViewer) return;
     setIsEditing(true);
     setIsLoading(true);
 
@@ -400,6 +451,10 @@ const ContactData = ({ ContactIds, closePopup }) => {
 
   //Handle Record DoubleCliked in Utility Page Show that record for Edit
   const handlerecordDoubleClicked = async () => {
+    if (isViewer) {
+      handleCancel();
+      return;
+    }
     try {
       const response = await axios.get(
         `${API_URL}/getcontactDataByid?contact_Id=${selectedRecord.contact_Id}`
@@ -656,66 +711,58 @@ const ContactData = ({ ContactIds, closePopup }) => {
 
   useEffect(() => {
     const fetchContactData = async (id) => {
-      const response = await axios.get(
-        `${API_URL}/getcontactDataByid?contact_Id=${id}`
-      );
-      const data = response.data.account_master_data;
-      const detailData = response.data.account_detail_data || [];
-      newAccoid = response.data.account_master_data.contact_Id;
-      const specialDatesData = data.special_date || [];
-
-      setFormData((prev) => ({
-        ...prev,
-        ...data,
-      }));
-
-      setAccountData(data || {});
-      setAccountDetail(detailData || []);
-
-      const eventCodes = detailData
-        .map((detail) => detail.eventCode)
-        .filter((eventCode) => eventCode !== null && eventCode !== undefined);
-
-      setSelectedGroups((prev) => [...new Set([...prev, ...eventCodes])]);
-      const formattedSpecialDates = specialDatesData.map((specialDate) => ({
-        date: specialDate.special_date || "",
-        description: specialDate.description || "",
-      }));
-      setSpecialDates(formattedSpecialDates);
-    };
-
-    const fetchAllContactData = async () => {
-      setIsLoading(true);
       try {
-        for (const id of contactIdsToUse) {
-          await fetchContactData(id);
-        }
+        console.log("Fetching data for Contact ID:", id); // Log the contact ID being fetched
+        const response = await axios.get(`${API_URL}/getcontactDataByid?contact_Id=${id}`);
+        const { account_master_data, account_detail_data, special_date } = response.data;
+
+        setFormData((prevFormData) => ({
+          ...prevFormData,
+          ...account_master_data,
+          profile1: account_master_data.profile1
+            ? `data:image/jpeg;base64,${account_master_data.profile1}`
+            : null,
+          profile2: account_master_data.profile2
+            ? `data:image/jpeg;base64,${account_master_data.profile2}`
+            : null,
+          profile3: account_master_data.profile3
+            ? `data:image/jpeg;base64,${account_master_data.profile3}`
+            : null,
+        }));
+
+        setAccountDetail(account_detail_data || []);
+        const eventCodes = account_detail_data
+          .map((detail) => detail.eventCode)
+          .filter((eventCode) => eventCode !== null && eventCode !== undefined);
+        setSelectedGroups(eventCodes || []);
+
+        const formattedSpecialDates = special_date.map((specialDate) => ({
+          date: specialDate.special_date || "",
+          description: specialDate.description || "",
+        }));
+        setSpecialDates(formattedSpecialDates);
+
+        setFetchedContactIds((prevFetched) => [...prevFetched, id]); // Track this ID as fetched
       } catch (error) {
         console.error("Error fetching contact data:", error);
-      } finally {
-        setIsLoading(false);
       }
-      setIsEditMode(false);
-      setAddOneButtonEnabled(true);
-      setEditButtonEnabled(true);
-      setDeleteButtonEnabled(true);
-      setBackButtonEnabled(true);
-      setSaveButtonEnabled(false);
-      setCancelButtonEnabled(false);
-      setUpdateButtonClicked(true);
-      setIsEditing(false);
     };
 
+    // Fetch data for the provided ContactIds
     if (contactIdsToUse && contactIdsToUse.length > 0) {
-      fetchAllContactData();
+      contactIdsToUse.forEach((id) => {
+        if (!fetchedContactIds.includes(id)) {
+          fetchContactData(id); // Fetch only if not already fetched
+        }
+      });
     }
-  }, [contactIdsToUse]);
-
+  }, [contactIdsToUse, fetchedContactIds]);
+  
   return (
     <>
       <ToastContainer />
       {/* <button className="eTenderButton" onClick={handleEtender}>eTender</button> */}
-      <div>
+      <div style={{marginLeft:"80px"}}>
         <ActionButtonGroup
           handleAddOne={handleAddOne}
           addOneButtonEnabled={addOneButtonEnabled}
@@ -730,6 +777,7 @@ const ContactData = ({ ContactIds, closePopup }) => {
           cancelButtonEnabled={cancelButtonEnabled}
           handleBack={handleBack}
           backButtonEnabled={backButtonEnabled}
+          isViewer={isViewer}
         />
 
         {/* Navigation Buttons */}
@@ -746,6 +794,18 @@ const ContactData = ({ ContactIds, closePopup }) => {
 
       <div className="contact-data-form-container">
         <form>
+        <div className="contact-data-form-group">
+            <label htmlFor="contact_Id">Contact Id:</label>
+            <input
+              type="text"
+              id="contact_Id"
+              name="contact_Id"
+              ref={orgNameRef}
+              value={formData.contact_Id}
+              onChange={handleChange}
+              disabled={true}
+            />
+          </div>
           <div className="contact-data-form-group">
             <label htmlFor="org_name">Organization Name:</label>
             <input
@@ -893,6 +953,18 @@ const ContactData = ({ ContactIds, closePopup }) => {
             />
           </div>
           <div className="contact-data-form-group">
+            <label htmlFor="UCC_Number">UCC Number</label>
+            <input
+              type="text"
+              id="UCC_Number"
+              name="UCC_Number"
+              value={formData.UCC_Number}
+              onChange={handleChange}
+              disabled={!isEditing && addOneButtonEnabled}
+            />
+          </div>
+
+          <div className="contact-data-form-group">
             <label htmlFor="anniversary">Annivesray:</label>
             <input
               type="date"
@@ -939,8 +1011,8 @@ const ContactData = ({ ContactIds, closePopup }) => {
               {formData.org_holder_name || "this contact"}!
             </div>
           )}
-          <h3>Special Dates</h3>
-          {specialDates.map((specialDate, index) => (
+          {/* {specialDates.map((specialDate, index) => (
+            
             <div key={index} className="special-date-entry">
               <div className="contact-data-form-group">
                 <label htmlFor={`special_date_${index}`}>Special Date:</label>
@@ -983,7 +1055,56 @@ const ContactData = ({ ContactIds, closePopup }) => {
             disabled={!isEditing}
           >
             + Add Special Date
-          </button>
+          </button> */}
+
+{specialDates.map((specialDate, index) => (
+  <div key={index} className="special-date-entry">
+    <button type="button" onClick={() => handleToggleMinimize(index)} className="minimize-button">
+      {specialDate.minimized ? 'Expand' : 'Minimize'}
+    </button>
+    <button type="button" onClick={() => handleRemoveSpecialDate(index)} className="remove-button">
+      Remove
+    </button>
+    {!specialDate.minimized && (
+      <>
+        <div className="contact-data-form-group">
+          <label htmlFor={`special_date_${index}`}>Special Date:</label>
+          <input
+            type="date"
+            id={`special_date_${index}`}
+            name={`special_date_${index}`}
+            value={specialDate.date}
+            onChange={(e) => handleSpecialDateChange(index, "date", e.target.value)}
+            disabled={!isEditing}
+          />
+        </div>
+        <div className="contact-data-form-group">
+          <label htmlFor={`special_date_${index}_description`}>
+            Description:
+          </label>
+          <input
+            type="text"
+            id={`special_date_${index}_description`}
+            name={`special_date_${index}_description`}
+            value={specialDate.description}
+            onChange={(e) => handleSpecialDateChange(index, "description", e.target.value)}
+            disabled={!isEditing}
+          />
+        </div>
+      </>
+    )}
+  </div>
+))}
+
+<button
+  type="button"
+  className="add-special-date-button"
+  onClick={handleAddSpecialDate}
+  disabled={!isEditing}
+>
+  + Add Special Date
+</button>
+
 
           <div className="contact-data-form-group">
             <label htmlFor="note">Note:</label>
@@ -1021,12 +1142,21 @@ const ContactData = ({ ContactIds, closePopup }) => {
                 disabled={!isEditing && addOneButtonEnabled}
               />
             </div>
-            {formData.profile1 && (
+            {/* {formData.profile1 && (
               <div className="profile-image-container">
                 <img src={formData.profile1} alt="Profile 1" />
                 <p>{formData.profile1FileName}</p>
               </div>
-            )}
+            )} */}
+            {formData.profile1 && (
+    <div className="profile-image-container">
+      <img src={formData.profile1} alt="Profile 1" />
+      <p>{formData.profile1FileName}</p>
+      <button type="button" onClick={() => handleRemoveImage('profile1')} className="remove-image-button">
+        Remove
+      </button>
+    </div>
+  )}
           </div>
 
           <div className="contact-data-form-group">
@@ -1041,12 +1171,21 @@ const ContactData = ({ ContactIds, closePopup }) => {
                 disabled={!isEditing && addOneButtonEnabled}
               />
             </div>
-            {formData.profile2 && (
+            {/* {formData.profile2 && (
               <div className="profile-image-container">
                 <img src={formData.profile2} alt="Profile 2" />
                 <p>{formData.profile2FileName}</p>
               </div>
-            )}
+            )} */}
+            {formData.profile2 && (
+    <div className="profile-image-container">
+      <img src={formData.profile2} alt="Profile 2" />
+      <p>{formData.profile2FileName}</p>
+      <button type="button" onClick={() => handleRemoveImage('profile2')} className="remove-image-button">
+        Remove
+      </button>
+    </div>
+  )}
           </div>
 
           <div className="contact-data-form-group">
@@ -1061,12 +1200,21 @@ const ContactData = ({ ContactIds, closePopup }) => {
                 disabled={!isEditing && addOneButtonEnabled}
               />
             </div>
-            {formData.profile3 && (
+            {/* {formData.profile3 && (
               <div className="profile-image-container">
                 <img src={formData.profile3} alt="Profile 3" />
                 <p>{formData.profile3FileName}</p>
               </div>
-            )}
+            )} */}
+            {formData.profile3 && (
+    <div className="profile-image-container">
+      <img src={formData.profile3} alt="Profile 3" />
+      <p>{formData.profile3FileName}</p>
+      <button type="button" onClick={() => handleRemoveImage('profile3')} className="remove-image-button">
+        Remove
+      </button>
+    </div>
+  )}
           </div>
 
           <div className="contact-data-form-table ">

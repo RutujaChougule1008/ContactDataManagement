@@ -23,10 +23,11 @@ def get_event_groups():
 def get_event_groups_by_count():
     try:
 
-        query = ('''SELECT dbo.EventGroup.eventCode, dbo.EventGroup.eventName, COUNT(*) AS count
-FROM dbo.EventGroup INNER JOIN
- dbo.Contact_Data_Bank_Detail ON dbo.EventGroup.eventCode = dbo.Contact_Data_Bank_Detail.eventCode
-GROUP BY dbo.EventGroup.eventCode, dbo.EventGroup.eventName order by dbo.EventGroup.eventName
+        query = ('''SELECT        TOP (100) PERCENT dbo.EventGroup.eventCode, dbo.EventGroup.eventName, COUNT(*) AS count
+FROM            dbo.EventGroup FULL OUTER JOIN
+                         dbo.Contact_Data_Bank_Detail ON dbo.EventGroup.eventCode = dbo.Contact_Data_Bank_Detail.eventCode
+GROUP BY dbo.EventGroup.eventCode, dbo.EventGroup.eventName
+ORDER BY dbo.EventGroup.eventCode 
                                  '''
             )
         additional_data = db.session.execute(text(query))

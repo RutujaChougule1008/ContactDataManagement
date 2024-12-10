@@ -2,7 +2,6 @@
     display: flex;
     width: 1200px; 
     max-width: 1200px; 
-    margin: 20px auto;
     background-color: #f4f7f9;
     padding: 30px;
     border-radius: 16px;
@@ -15,6 +14,9 @@
     height: 800px;
     white-space: nowrap;
     flex-direction: column;
+    height: calc(100vh - 40px);
+    position: relative;
+    margin-left: 50px;
 }
 
 /* Headings */
@@ -238,4 +240,54 @@ h2 {
     text-align: center;
   }
   
+  .remove-image-button {
+    margin-top: 10px;
+    background-color: red;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+
+
   
+  
+
+  .navigation-buttons {
+    position: fixed; /* Fixed position to keep buttons always visible */
+    bottom: 20px; /* Adequate space from the bottom edge */
+    left: 50%; /* Center the buttons horizontally */
+    transform: translateX(-100%); /* Adjust positioning to perfectly center */
+    z-index: 1000; /* Ensure buttons are above other elements */
+    display: flex; /* Arrange buttons in a row */
+    gap: 20px; /* Add spacing between buttons */
+    padding: 10px; /* Padding to add click space */
+    background-color: #fff; /* Optional: Background color to make buttons stand out */
+    border-radius: 8px; /* Optional: Rounded corners for better aesthetics */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); /* Optional: Subtle shadow for depth */
+    margin-left: 50px;
+}
+
+/* Responsive Adjustments for Small Screens */
+@media (max-width: 768px) {
+    .contact-data-form-container {
+        height: calc(100vh - 20px); /* Reduce padding for smaller screens */
+        padding: 10px;
+    }
+}
+
+/* Responsive Adjustments for Medium Screens */
+@media (min-width: 769px) and (max-width: 1200px) {
+    .contact-data-form-container {
+        height: calc(100vh - 30px); /* Moderate height for medium screens */
+        padding: 15px;
+    }
+}
+
+/* Responsive Adjustments for Large Screens */
+@media (min-width: 1201px) {
+    .contact-data-form-container {
+        height: calc(100vh - 40px); /* Larger height for big screens */
+        padding: 20px;
+    }
+}

@@ -2,6 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./SearchPage.css";
+import SearchBar from "../../../common/SearchBar";
+import {
+  Grid,
+  Typography
+} from "@mui/material";
 
 const SearchPage = () => {
   const [groupData, setGroupData] = useState([]);
@@ -9,6 +14,8 @@ const SearchPage = () => {
   const [selectedEvents, setSelectedEvents] = useState([]);
   const [selectedGroupDetails, setSelectedGroupDetails] = useState(null);
   const [selectedGroupNames, setSelectedGroupNames] = useState([]);
+  const [filteredData, setFilteredData] = useState([])
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
   // API call to fetch details for a specific group when "Show" is clicked
@@ -52,8 +59,39 @@ const SearchPage = () => {
     });
   };
 
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  useEffect(() => {
+    const filtered = groupData.filter((post) => {
+      const searchTermLower = searchTerm.toLowerCase();
+      return Object.keys(post).some((key) => {
+        const value = post[key];
+        return (
+          value !== null &&
+          value !== undefined &&
+          String(value).toLowerCase().includes(searchTermLower)
+        );
+      });
+    });
+
+    
+    setFilteredData(filtered);
+  }, [searchTerm, groupData]);
+
   return (
     <div className="contact-data-seach-form-table">
+      <Typography variant="h6" textAlign="center" sx={{ marginBottom: 0.5 }}>
+        Search Members Categorywise
+      </Typography>
+
+      {/* Search bar */}
+      <Grid container justifyContent="center" sx={{ marginBottom: 1 }}>
+        <Grid item xs={12} sm={6}>
+          <SearchBar value={searchTerm} onChange={handleSearchChange} />
+        </Grid>
+      </Grid>
       <table className="custom-table1">
         <thead>
           <tr>
@@ -63,7 +101,7 @@ const SearchPage = () => {
           </tr>
         </thead>
         <tbody>
-          {groupData.map((group) => (
+          {filteredData.map((group) => (
             <tr key={group.eventCode}>
               <td>{group.eventCode}</td>
               <td>{group.eventName}</td>

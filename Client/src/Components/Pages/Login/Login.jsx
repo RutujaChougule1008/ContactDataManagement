@@ -6,7 +6,7 @@ import "./Login.css";
 import { useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 
-const apikey = process.env.REACT_PYTHON_API_URL;
+const apikey = process.env.REACT_APP_API_URL;
 
 const LoginPage = () => {
   const usernameRef = useRef(null);
@@ -43,7 +43,7 @@ const LoginPage = () => {
     try {
       // Make the API request with axios
       const response = await axios.post(
-        `http://localhost:8080/api/eBuySugar/loginuser`,
+        `${apikey}/loginuser`,
         {
           User_Name: username,
           User_Password: password,

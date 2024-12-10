@@ -27,6 +27,7 @@ const API_URL = process.env.REACT_APP_API_URL;
 const OrganizationNameSearchPageUtility = () => {
   const userRole = sessionStorage.getItem("user_type");
   const isViewer = userRole === "V";
+  const isEditor = userRole === "E";
   const [contactData, setContactData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -213,8 +214,22 @@ const OrganizationNameSearchPageUtility = () => {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <Typography variant="h4" gutterBottom textAlign="center">
+    <div style={{
+      padding: "10px",
+      maxWidth: "100vw", // Ensure full-width on all screens
+      overflowX: "hidden", // Prevent horizontal scrolling
+    }}>
+      <Typography  variant="h4"
+    gutterBottom
+    textAlign="center"
+    sx={{
+      fontSize: {
+        xs: "20px", // Smaller font size for extra small screens
+        sm: "24px",
+        md: "28px",
+        lg: "32px", // Larger font size for large screens
+      },
+    }}>
         {selectedOrgNames && selectedOrgNames.length > 0
           ? `Report for: ${selectedOrgNames.join(", ")}`
           : "Contact Data Search"}
@@ -236,10 +251,19 @@ const OrganizationNameSearchPageUtility = () => {
         </Typography>
       )}
 
-      <Grid container justifyContent="flex-end" sx={{ marginBottom: 2 }}>
-        <Button variant="contained" onClick={handleClick} disabled={isViewer}>
-          Export To
-        </Button>
+      <Grid container
+    justifyContent="flex-end"
+    spacing={2}
+    sx={{
+      marginBottom: 2,
+      width: "100%", // Ensure full width
+      maxWidth: "100%", // Prevent layout overflow
+    }}>
+        {!isViewer && !isEditor && (
+  <Button variant="contained" onClick={handleClick}>
+    Export To
+  </Button>
+)}
         <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
           <MenuItem
             onClick={() => {
@@ -284,8 +308,9 @@ const OrganizationNameSearchPageUtility = () => {
             sx={{
               marginTop: 2,
               maxHeight: "70vh",
-              maxWidth: "100%",
-              width: "90vw",
+              maxWidth: "90%",
+              width: "80vw",
+              marginLeft:25
             }}
           >
             <Table>

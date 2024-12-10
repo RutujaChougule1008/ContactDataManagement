@@ -86,7 +86,10 @@ function EventGroupUtility() {
   };
 
   return (
-    <div className="container" style={{ height: "980px" }}>
+    <div className="container" style={{ height: "calc(100vh - 20px)", // Adjust for the viewport height
+      marginTop: "10vh", // Dynamic top margin for responsiveness
+      overflow: "auto",
+      marginLeft:"30vh"}}>
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Button

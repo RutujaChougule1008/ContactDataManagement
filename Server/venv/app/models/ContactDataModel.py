@@ -31,6 +31,7 @@ class ContactDataBankHead(db.Model):
     profile1FileName=Column(String(255), nullable=True)
     profile2FileName=Column(String(255), nullable=True)
     profile3FileName=Column(String(255), nullable=True)
+    UCC_Number=Column(String(255), nullable=True)
 
 
 

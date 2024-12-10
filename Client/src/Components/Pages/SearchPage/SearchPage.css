@@ -2,28 +2,74 @@
 .contact-data-seach-form-table {
     display: flex;
     justify-content: center; /* Center horizontally */
-    align-items: center; /* Center vertically */
-    height: 900px; /* Full height of viewport */
-    overflow-y: auto; /* Allow scrolling if content grows */
+    align-items: flex-start; /* Align items to the top */
+    flex-direction: column; /* Stack search bar, title, and table vertically */
+    min-height: 100vh; /* Ensure it uses the full viewport height */
+    padding: 20px;
+    box-sizing: border-box;
+    margin-left: 70px;
+}
+
+/* Page title styling */
+.page-title {
+    font-size: 28px;
+    font-weight: bold;
+    text-align: center;
+    margin: 20px auto; /* Ensure spacing above and below the title */
+    color: #333;
+    word-wrap: break-word;
+}
+
+/* Search bar container */
+.search-bar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    gap: 10px; /* Add spacing between elements */
+    width: 100%;
+    max-width: 1200px; /* Align with table width */
+    margin: 20px auto; /* Add spacing below the title and above the table */
+    box-sizing: border-box;
+}
+
+/* Search input styles */
+.search-bar-container input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 60%;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+/* Button styles */
+.search-bar-container button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.search-bar-container button:hover {
+    background-color: #0056b3;
 }
 
 /* Basic table styles */
 .custom-table1 {
-    width: 800px; /* Increased width */
-    max-width: 100%; /* Ensure it doesn't exceed container */
+    width: 100%;
+    max-width: 1000px;
+    margin: 20px auto; /* Center the table */
     border-collapse: collapse;
     background-color: #fff;
     border-radius: 8px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    table-layout: fixed; /* Ensure the layout is fixed for proper scroll alignment */
-}
-
-/* Styling table cells */
-.custom-table1 th, .custom-table1 td {
-    padding: 1px 5px; /* Reduced padding for smaller row height */
-    border: 1px solid #ddd;
-    font-size: 15px; /* Optional: Adjust font size if needed */
-    line-height: 1.2; /* Optional: Adjust line-height for more compact rows */
+    table-layout: fixed;
+    word-wrap: break-word;
 }
 
 /* Table header */
@@ -32,6 +78,19 @@
     color: white;
     text-align: left;
     text-transform: uppercase;
+    padding: 12px;
+    font-size: 16px;
+    position: sticky; /* Keep header visible on scroll */
+    top: 0;
+    z-index: 2;
+}
+
+/* Table cells */
+.custom-table1 th, .custom-table1 td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    font-size: 14px;
+    line-height: 1.4;
 }
 
 /* Alternating row color */
@@ -47,38 +106,100 @@
 
 /* Table body with scrollable content */
 .custom-table1 tbody {
-    display: block; /* Block display for proper scrolling */
-    max-height: 800px; /* Set the maximum height */
-    overflow-y: auto; /* Enable vertical scrolling */
+    display: block;
+    max-height: calc(100vh - 400px); /* Adjust height to fit viewport */
+    overflow-y: auto;
     width: 100%;
 }
 
-/* Ensure that the table rows and header are properly aligned */
+/* Align rows and header properly */
 .custom-table1 thead, .custom-table1 tbody tr {
     display: table;
     width: 100%;
     table-layout: fixed;
 }
 
-/* Styling for the Show button */
+/* Button for additional actions */
 .show-button {
-    position: absolute;
-    top: 10px;
-    right: 90px;
+    position: fixed;
+    top: 20px;
+    right: 20px;
     background-color: #007bff;
     color: white;
-    padding: 8px 16px;
-    border: none;
+    padding: 12px 20px;
     border-radius: 4px;
+    font-size: 16px;
+    border: none;
     cursor: pointer;
     transition: background-color 0.3s ease;
 }
 
-.show-button:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
+.show-button:hover {
+    background-color: #0056b3;
 }
 
-.show-button:hover:not(:disabled) {
-    background-color: #0056b3;
+/* Media Queries for smaller screens */
+
+/* Tablets and smaller screens (768px and below) */
+@media (max-width: 768px) {
+    .page-title {
+        font-size: 22px;
+    }
+
+    .search-bar-container input {
+        width: 100%;
+    }
+
+    .search-bar-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .custom-table1 {
+        font-size: 14px;
+    }
+}
+
+/* Mobile devices (480px and below) */
+@media (max-width: 480px) {
+    .page-title {
+        font-size: 20px;
+    }
+
+    .custom-table1 {
+        font-size: 12px;
+    }
+
+    .custom-table1 th, .custom-table1 td {
+        padding: 8px;
+    }
+
+    .search-bar-container button {
+        width: 100%;
+    }
+}
+
+/* Large screens (1920px and above) */
+@media (min-width: 1920px) {
+    .contact-data-seach-form-table {
+        max-width: 70%; /* Center and limit width */
+        margin: auto;
+        padding: 20px;
+    }
+
+    .page-title {
+        font-size: 32px; /* Increase font size for readability */
+    }
+
+    .custom-table1 {
+        font-size: 18px; /* Adjust font size for readability */
+    }
+
+    .custom-table1 th, .custom-table1 td {
+        padding: 12px; /* Add spacing */
+    }
+
+    .custom-table1 tbody {
+        max-height: calc(100vh - 300px); /* Adjust height for large screens */
+    }
 }
